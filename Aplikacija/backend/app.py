@@ -162,6 +162,60 @@ def check_alarms():
     conn.commit()
     conn.close()
 
+def generate_random_notifications():
+    """Generate random notifications for testing purposes"""
+    notifications_templates = [
+        {'type': 'system', 'message': 'Sistem uspješno sinhronizovan sa senzorom betona', 'severity': 'info'},
+        {'type': 'battery', 'message': 'Nizak nivo baterije na senzoru vazduha ({}%)', 'severity': 'warning'},
+        {'type': 'connection', 'message': 'Privremeni prekid konekcije sa pumpom', 'severity': 'warning'},
+        {'type': 'temperature', 'message': 'Temperatura betona izvan preporučenog opsega: {}°C', 'severity': 'critical'},
+        {'type': 'maintenance', 'message': 'Potrebno je održavanje grijača vode', 'severity': 'warning'},
+        {'type': 'calibration', 'message': 'Sensor vazduha uspješno kalibrisan', 'severity': 'info'},
+        {'type': 'safety', 'message': 'Kritična temperatura grijača: {}°C - automatski zaustavljen', 'severity': 'critical'},
+        {'type': 'system', 'message': 'Pumpa za vodu završila sa radom ({}s)', 'severity': 'info'},
+        {'type': 'humidity', 'message': 'Vlažnost betona ispod kritičnog nivoa: {}%', 'severity': 'critical'},
+        {'type': 'network', 'message': 'Mreža obnovljena - svi uređaji povezani', 'severity': 'info'},
+        {'type': 'power', 'message': 'Napajanje grijača nestabilno', 'severity': 'warning'},
+        {'type': 'data', 'message': 'Anomalija u podacima senzora betona - provjeriti kalibracju', 'severity': 'warning'},
+        {'type': 'success', 'message': 'Automatska kalibracija senzora završena uspješno', 'severity': 'info'},
+        {'type': 'alert', 'message': 'Prekoračen maksimalni broj pokušaja konekcije', 'severity': 'critical'},
+        {'type': 'maintenance', 'message': 'Redovno održavanje sistema zakazano za sutra', 'severity': 'info'},
+    ]
+    
+    while True:
+        time.sleep(random.randint(10, 30))  # Random interval between 10-30 seconds
+        
+        # 80% chance to generate a notification
+        if random.random() < 0.8:
+            template = random.choice(notifications_templates)
+            message = template['message']
+            
+            # Fill in random values for placeholders
+            if '{}' in message:
+                if 'baterije' in message:
+                    message = message.format(random.randint(5, 25))
+                elif 'temperatura' in message.lower():
+                    message = message.format(random.randint(-5, 50))
+                elif 'vlažnost' in message.lower():
+                    message = message.format(random.randint(15, 35))
+                elif 'radom' in message:
+                    message = message.format(random.randint(60, 300))
+                else:
+                    message = message.format(random.randint(1, 100))
+            
+            conn = sqlite3.connect('iot_data.db')
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT INTO notifications (type, message, severity)
+                VALUES (?, ?, ?)
+            ''', (template['type'], message, template['severity']))
+            
+            conn.commit()
+            conn.close()
+            
+            print(f"🔔 Generated random notification: {message} ({template['severity']})")
+
 # API Routes
 @app.route('/api/dashboard', methods=['GET'])
 def get_dashboard_data():
@@ -321,5 +375,11 @@ if __name__ == '__main__':
     # Start simulation thread
     simulation_thread = threading.Thread(target=simulate_data, daemon=True)
     simulation_thread.start()
+    
+    # Start random notifications thread
+    notifications_thread = threading.Thread(target=generate_random_notifications, daemon=True)
+    notifications_thread.start()
+    
+    print("🚀 IoT Backend pokrenut sa random notifikacijama!")
     
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -18,26 +18,54 @@ Aplikacija/
 
 ## Pokretanje Aplikacije
 
-### Backend (Flask)
+### 🚀 Automatsko Pokretanje (Preporučeno)
+
+Koristite našu naprednu startup skriptu koja automatski:
+- Proverava Python instalaciju
+- Kreira i aktivira virtualno okruženje
+- Instalira sve dependencije
+- Pokreće backend i frontend servere
+- Otvara aplikaciju u browser-u
+
+```bash
+cd Aplikacija
+./start_app.sh
+```
+
+### 🛑 Zaustavljanje Aplikacije
+
+```bash
+cd Aplikacija
+./stop_app.sh
+```
+
+### 📝 Manuelno Pokretanje
+
+#### Backend (Flask)
 
 1. Navigiraj u backend folder:
 ```bash
 cd Aplikacija/backend
 ```
 
-2. Instaliraj dependencije:
+2. Aktiviraj virtualno okruženje:
+```bash
+source ../.venv/bin/activate
+```
+
+3. Instaliraj dependencije:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Pokreni Flask aplikaciju:
+4. Pokreni Flask aplikaciju:
 ```bash
 python app.py
 ```
 
 Backend će biti dostupan na: `http://localhost:5000`
 
-### Frontend
+#### Frontend
 
 1. Navigiraj u frontend folder:
 ```bash
@@ -47,7 +75,7 @@ cd Aplikacija/frontend
 2. Otvori `index.html` u web browseru ili pokreni lokalni web server:
 ```bash
 # Sa Python
-python -m http.server 8080
+python3 -m http.server 8080
 
 # Sa Node.js (ako imaš npx)
 npx serve .
@@ -110,13 +138,29 @@ Sistem koristi simulaciju umesto realnih uređaja:
 - **Frontend**: HTML5, CSS3, JavaScript (Vanilla)
 - **Grafikoni**: Chart.js
 - **Ikone**: Font Awesome
-- **Styling**: Custom CSS sa modernim dizajnom
+- **Styling**: Custom CSS sa futurističkim glassmorphism dizajnom
+- **Automatizacija**: Bash skripta za potpuno automatsko pokretanje
 
 ## Karakteristike
 
-- Responsive dizajn
-- Realtime ažuriranje podataka
-- Moderna UI sa glassmorphism efektima
-- Animacije i prelazi
-- Toast notifikacije
-- Grafički prikaz istorijskih podataka
+- Responsive dizajn za sve uređaje
+- Realtime ažuriranje podataka svakih 5 sekundi
+- Futuristička UI sa glassmorphism efektima i neon bojama
+- Animacije i smooth prelazi
+- Toast notifikacije sa različitim nivoima upozorenja
+- Grafički prikaz istorijskih podataka sa Chart.js
+- Potpuno automatska startup skripta
+- Virtualno okruženje management
+- Auto-start u web browser-u
+- Graceful shutdown sa Ctrl+C
+
+## 🎨 Dizajn Karakteristike
+
+- **Tamna tema** sa futurističkim gradijentima
+- **Glassmorphism efekti** sa blur pozadinama
+- **Neon glow efekti** za status indikatore
+- **Animirani elementi** (pulsiranje, shimmer efekti)
+- **Moderni button hover efekti**
+- **Responsive layout** za sve veličine ekrana
+- **Custom scrollbar** styling
+- **Battery level** animirani indikatori

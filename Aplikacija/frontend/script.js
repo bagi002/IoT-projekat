@@ -181,6 +181,9 @@ function updateActuatorCard(actuatorType, actuatorData) {
         statusElement.className = 'status-indicator offline';
     }
     
+    // Update control card status
+    updateControlCardStatus(actuatorType, actuatorData);
+    
     // Specific data
     if (actuatorType === 'pumpa' && actuatorData.remaining_time) {
         document.getElementById('pumpa-time').textContent = `${actuatorData.remaining_time}s`;
@@ -193,11 +196,82 @@ function updateActuatorCard(actuatorType, actuatorData) {
     }
 }
 
+function updateControlCardStatus(actuatorType, actuatorData) {
+    let statusElementId, statusText;
+    
+    if (actuatorType === 'pumpa') {
+        statusElementId = 'pump-control-status';
+        statusText = actuatorData.active ? 'Pumpa radi' : 'Neaktivna';
+    } else if (actuatorType === 'grijac') {
+        statusElementId = 'heater-control-status';
+        statusText = actuatorData.active ? 'Grijač radi' : 'Neaktivan';
+    }
+    
+    const statusElement = document.getElementById(statusElementId);
+    if (statusElement) {
+        const statusDot = statusElement.querySelector('.status-dot');
+        const statusTextElement = statusElement.querySelector('.status-text');
+        
+        if (statusDot && statusTextElement) {
+            // Update status dot
+            statusDot.className = 'status-dot';
+            if (actuatorData.status === 'online') {
+                if (actuatorData.active) {
+                    statusDot.classList.add('active');
+                } else {
+                    statusDot.classList.add('online');
+                }
+            } else {
+                statusDot.classList.add('offline');
+            }
+            
+            // Update status text
+            statusTextElement.textContent = statusText;
+        }
+    }
+}
+
 function updateBatteryLevel(elementId, batteryLevel) {
     const batteryElement = document.getElementById(elementId);
     if (batteryElement) {
         batteryElement.style.setProperty('--battery-level', `${batteryLevel}%`);
         batteryElement.style.width = `${batteryLevel}%`;
+    }
+    
+    // Update battery text and icon colors based on level
+    const prefix = elementId.replace('-battery-level', '');
+    const batteryText = document.getElementById(`${prefix}-battery`);
+    const batteryIcon = document.getElementById(`${prefix}-battery-icon`);
+    
+    if (batteryText && batteryIcon) {
+        // Remove existing classes
+        batteryText.classList.remove('critical', 'warning', 'good', 'excellent');
+        batteryIcon.classList.remove('critical', 'warning', 'good', 'excellent');
+        
+        // Determine battery level class and icon
+        let levelClass, iconClass;
+        
+        if (batteryLevel <= 15) {
+            levelClass = 'critical';
+            iconClass = 'fas fa-battery-empty';
+        } else if (batteryLevel <= 35) {
+            levelClass = 'warning';
+            iconClass = 'fas fa-battery-quarter';
+        } else if (batteryLevel <= 65) {
+            levelClass = 'good';
+            iconClass = 'fas fa-battery-half';
+        } else if (batteryLevel <= 85) {
+            levelClass = 'good';
+            iconClass = 'fas fa-battery-three-quarters';
+        } else {
+            levelClass = 'excellent';
+            iconClass = 'fas fa-battery-full';
+        }
+        
+        // Apply new classes
+        batteryText.classList.add(levelClass);
+        batteryIcon.classList.add(levelClass);
+        batteryIcon.className = `battery-icon ${iconClass} ${levelClass}`;
     }
 }
 
@@ -339,18 +413,57 @@ function initializeCharts() {
         },
         options: {
             responsive: true,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#ffffff',
+                        font: {
+                            size: 14,
+                            weight: '600'
+                        }
+                    }
+                }
+            },
             scales: {
                 y: {
                     beginAtZero: false,
                     title: {
                         display: true,
-                        text: 'Temperatura (°C)'
+                        text: 'Temperatura (°C)',
+                        color: '#ffffff',
+                        font: {
+                            size: 14,
+                            weight: '600'
+                        }
+                    },
+                    ticks: {
+                        color: '#e0e6ed',
+                        font: {
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
                     }
                 },
                 x: {
                     title: {
                         display: true,
-                        text: 'Vreme'
+                        text: 'Vreme',
+                        color: '#ffffff',
+                        font: {
+                            size: 14,
+                            weight: '600'
+                        }
+                    },
+                    ticks: {
+                        color: '#e0e6ed',
+                        font: {
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
                     }
                 }
             }
@@ -382,19 +495,58 @@ function initializeCharts() {
         },
         options: {
             responsive: true,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#ffffff',
+                        font: {
+                            size: 14,
+                            weight: '600'
+                        }
+                    }
+                }
+            },
             scales: {
                 y: {
                     beginAtZero: true,
                     max: 100,
                     title: {
                         display: true,
-                        text: 'Vlažnost (%)'
+                        text: 'Vlažnost (%)',
+                        color: '#ffffff',
+                        font: {
+                            size: 14,
+                            weight: '600'
+                        }
+                    },
+                    ticks: {
+                        color: '#e0e6ed',
+                        font: {
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
                     }
                 },
                 x: {
                     title: {
                         display: true,
-                        text: 'Vreme'
+                        text: 'Vreme',
+                        color: '#ffffff',
+                        font: {
+                            size: 14,
+                            weight: '600'
+                        }
+                    },
+                    ticks: {
+                        color: '#e0e6ed',
+                        font: {
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
                     }
                 }
             }
