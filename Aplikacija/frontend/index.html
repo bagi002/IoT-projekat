@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Sistem za Nadzor Betona</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-building"></i> Sistem za Nadzor Betona</h1>
+            <div class="header-info">
+                <span id="current-time"></span>
+                <span id="connection-status" class="status-online">● Online</span>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="dashboard">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </button>
+            <button class="tab-button" data-tab="history">
+                <i class="fas fa-chart-line"></i> Istorija
+            </button>
+            <button class="tab-button" data-tab="notifications">
+                <i class="fas fa-bell"></i> Notifikacije
+                <span id="notification-badge" class="badge">0</span>
+            </button>
+        </nav>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="cards-grid">
+                <!-- Senzor Betona -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-thermometer-half"></i> Senzor Betona</h3>
+                        <span class="status-indicator" id="beton-status">●</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="metric">
+                            <label>Temperatura:</label>
+                            <span id="beton-temp">--°C</span>
+                        </div>
+                        <div class="metric">
+                            <label>Vlažnost:</label>
+                            <span id="beton-humidity">--%</span>
+                        </div>
+                        <div class="battery">
+                            <label>Baterija:</label>
+                            <div class="battery-container">
+                                <div class="battery-level" id="beton-battery-level"></div>
+                                <span id="beton-battery">--%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Senzor Vazduha -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-wind"></i> Senzor Vazduha</h3>
+                        <span class="status-indicator" id="vazduh-status">●</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="metric">
+                            <label>Temperatura:</label>
+                            <span id="vazduh-temp">--°C</span>
+                        </div>
+                        <div class="metric">
+                            <label>Vlažnost:</label>
+                            <span id="vazduh-humidity">--%</span>
+                        </div>
+                        <div class="battery">
+                            <label>Baterija:</label>
+                            <div class="battery-container">
+                                <div class="battery-level" id="vazduh-battery-level"></div>
+                                <span id="vazduh-battery">--%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pumpa -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-tint"></i> Pumpa za Vodu</h3>
+                        <span class="status-indicator" id="pumpa-status">●</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="metric">
+                            <label>Status:</label>
+                            <span id="pumpa-active" class="status-text">Neaktivna</span>
+                        </div>
+                        <div class="metric">
+                            <label>Preostalo vreme:</label>
+                            <span id="pumpa-time">0s</span>
+                        </div>
+                        <div class="battery">
+                            <label>Baterija:</label>
+                            <div class="battery-container">
+                                <div class="battery-level" id="pumpa-battery-level"></div>
+                                <span id="pumpa-battery">--%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grijač -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-fire"></i> Grijač Vode</h3>
+                        <span class="status-indicator" id="grijac-status">●</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="metric">
+                            <label>Status:</label>
+                            <span id="grijac-active" class="status-text">Neaktivan</span>
+                        </div>
+                        <div class="metric">
+                            <label>Temperatura:</label>
+                            <span id="grijac-temp">--°C</span>
+                        </div>
+                        <div class="battery">
+                            <label>Baterija:</label>
+                            <div class="battery-container">
+                                <div class="battery-level" id="grijac-battery-level"></div>
+                                <span id="grijac-battery">--%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manual Control -->
+            <div class="control-panel">
+                <h3><i class="fas fa-sliders-h"></i> Manuelno Upravljanje</h3>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <h4>Pumpa za Vodu</h4>
+                        <div class="control-row">
+                            <input type="number" id="pump-duration" placeholder="Trajanje (s)" value="300" min="1" max="1800">
+                            <button id="start-pump" class="btn btn-primary">
+                                <i class="fas fa-play"></i> Pokreni
+                            </button>
+                            <button id="stop-pump" class="btn btn-danger">
+                                <i class="fas fa-stop"></i> Zaustavi
+                            </button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <h4>Grijač Vode</h4>
+                        <div class="control-row">
+                            <input type="number" id="heater-temp" placeholder="Temperatura (°C)" value="50" min="20" max="80">
+                            <button id="start-heater" class="btn btn-primary">
+                                <i class="fas fa-play"></i> Pokreni
+                            </button>
+                            <button id="stop-heater" class="btn btn-danger">
+                                <i class="fas fa-stop"></i> Zaustavi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="history" class="tab-content">
+            <div class="history-controls">
+                <h3><i class="fas fa-chart-line"></i> Istorija Očitavanja</h3>
+                <div class="time-selector">
+                    <label>Prikaži podatke za:</label>
+                    <select id="time-range">
+                        <option value="5">Zadnjih 5 sati</option>
+                        <option value="10">Zadnjih 10 sati</option>
+                        <option value="24" selected>Zadnjih 24 sata</option>
+                        <option value="168">Zadnjih 7 dana</option>
+                        <option value="0">Svi podaci</option>
+                    </select>
+                    <button id="refresh-charts" class="btn btn-secondary">
+                        <i class="fas fa-sync"></i> Osvježi
+                    </button>
+                </div>
+            </div>
+            
+            <div class="charts-container">
+                <div class="chart-wrapper">
+                    <h4>Temperatura (°C)</h4>
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <h4>Vlažnost (%)</h4>
+                    <canvas id="humidityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications Tab -->
+        <div id="notifications" class="tab-content">
+            <div class="notifications-header">
+                <h3><i class="fas fa-bell"></i> Notifikacije</h3>
+                <button id="clear-all-notifications" class="btn btn-secondary">
+                    <i class="fas fa-trash"></i> Obriši sve
+                </button>
+            </div>
+            <div id="notifications-list" class="notifications-list">
+                <!-- Notifications will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notification-toast" class="notification-toast">
+        <div class="toast-content">
+            <i class="toast-icon"></i>
+            <span class="toast-message"></span>
+            <button class="toast-close">&times;</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
