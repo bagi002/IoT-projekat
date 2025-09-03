@@ -25,7 +25,7 @@
 
 ---
 
-## Detaljni ciljevi zavisnosti mjerenih traženih veličina
+## Detaljni ciljevi zavisnosti mjerenih traženih veličina (Nacrt - primer)
 
 ### 🌡️ Temperaturna kontrola
 - **U prvih 12 sata od izljevanja**: razlika ne smije prelaziti ±3°C
@@ -45,10 +45,10 @@
 **Pumpa se aktivira ako:**
 - vlažnost betona padne ispod ciljnih vrijednosti
 - vlažnost vazduha je premala (ispod 50%) što utiče na isušivanje betona
-- temperatura betona je previsoka (>30°C) - poljevanje hladnom vodom
+- temperatura betona je iznad trazenih vrijednosti - poljevanje hladnom vodom
 
 **Grijač se aktivira ako:**
-- temperatura betona je preniska (<10°C) - poljevanje toplom vodom
+- temperatura betona je ipod trazenih vrijednosti - poljevanje toplom vodom
 - temperatura vazduha <10°C i treba poljevanje
 
 **Ograničenja:**
@@ -134,7 +134,7 @@
 
 **Aktuatori:**
 - `GET /api/pumpa/stanje`  
-  Odgovor: `{"aktivna": true, "baterija": 78, "greska": null, "preostalo_vreme": 180}`
+  Odgovor: `{"aktivna": true, "baterija": 78, "greska": null}`
 
 - `GET /api/grijac/stanje`  
   Odgovor: `{"aktivan": false, "temperatura": 45.2, "baterija": 65, "greska": null}`
@@ -208,6 +208,9 @@
 - Svi senzori će biti simulirani softverski sa realističnim vrijednostima
 - Aktuatori (pumpa i grijač) će biti simulirani sa vizuelnim indikatorima
 - Simulacija uključuje varijacije temperatura i vlažnosti tokom dana
+- Ukljucuje mogucnost pokretanja niza mikro testova koje kreiraju odredjeni okidac
+  a u cilju da se vidi kako se sistem ponasa u odnosu na dati dogadjaj
+
 
 ### ⚙️ Simulacijski parametri
 - **Temperatura vazduha**: 5°C do 35°C (dnevne varijacije)
