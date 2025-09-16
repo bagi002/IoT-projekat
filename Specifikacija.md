@@ -101,25 +101,23 @@
 
 ### 📡 MQTT Protokol
 
-| Tema                               | Publisher             | Subscriber    |
-|------------------------------------|-----------------------|---------------|
-| ploca1/beton/temperatura           | Senzor u betonu       | Kontroler     |
-| ploca1/beton/vlaznost              | Senzor u betonu       | Kontroler     |
-| ploca1/beton/greska                | Senzor u betonu       | Kontroler     |
-| ploca1/beton/batery                | Senzor u betonu       | Kontroler     |
-| ploca1/povrsina/temperatura        | Senzor iznad betona   | Kontroler     |
-| ploca1/povrsina/vlaznost           | Senzor iznad betona   | Kontroler     |
-| ploca1/povrsina/greska             | Senzor iznad betona   | Kontroler     |
-| ploca1/povrsina/batery             | Senzor iznad betona   | Kontroler     |
-| ploca1/vodena_pumpa/ventil/on      | Kontroler             | Pumpa za vodu |
-| ploca1/vodena_pumpa/ventil/off     | Kontroler             | Pumpa za vodu |
-| ploca1/vodena_pumpa/ventil/error   | Pumpa za vodu         | Kontroler     |
-| ploca1/vodena_pumpa/batery         | Pumpa za vodu         | Kontroler     |
-| ploca1/grijac_vode/on              | Kontroler             | Grijač vode   |
-| ploca1/grijac_vode/off             | Kontroler             | Grijač vode   |
-| ploca1/grijac_vode/temperatura     | Grijač vode           | Kontroler     |
-| ploca1/grijac_vode/batery          | Grijač vode           | Kontroler     |
-| ploca1/grijac_vode/greska          | Grijač vode           | Kontroler     |
+| Tema                                    | Publisher             | Subscriber    |
+|-----------------------------------------|-----------------------|---------------|
+| ploca1/beton/temperatura                | Senzor u betonu       | Kontroler     |
+| ploca1/beton/vlaznost                   | Senzor u betonu       | Kontroler     |
+| ploca1/beton/greska                     | Senzor u betonu       | Kontroler     |
+| ploca1/beton/batery                     | Senzor u betonu       | Kontroler     |
+| ploca1/povrsina/temperatura             | Senzor iznad betona   | Kontroler     |
+| ploca1/povrsina/vlaznost                | Senzor iznad betona   | Kontroler     |
+| ploca1/povrsina/greska                  | Senzor iznad betona   | Kontroler     |
+| ploca1/povrsina/batery                  | Senzor iznad betona   | Kontroler     |
+| ploca1/vodena_pumpa/ventil/state        | Kontroler             | Pumpa za vodu |
+| ploca1/vodena_pumpa/ventil/error        | Pumpa za vodu         | Kontroler     |
+| ploca1/vodena_pumpa/batery              | Pumpa za vodu         | Kontroler     |
+| ploca1/grijac_vode/state                | Kontroler             | Grijač vode   |
+| ploca1/grijac_vode/temperatura          | Grijač vode           | Kontroler     |
+| ploca1/grijac_vode/batery               | Grijač vode           | Kontroler     |
+| ploca1/grijac_vode/greska               | Grijač vode           | Kontroler     |
 
 ### 🌐 HTTP Protokol (Kontroler ↔ Aplikacija)
 
