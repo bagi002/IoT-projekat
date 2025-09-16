@@ -10,7 +10,7 @@
 #define MQTT_KEEPALIVE       60
 #define MQTT_CLIENT_ID       "GrejacVodeClient"
 
-#define GREJAC_STATE         "ploca1/grejac_vode/state"
+#define GREJAC_STANJE        "ploca1/grejac_vode/stanje"
 #define GREJAC_TEMPERATURA   "ploca1/grejac_vode/temperatura"
 #define GREJAC_BATERIJA      "ploca1/grejac_vode/baterija"
 #define GREJAC_GRESKA        "ploca1/grejac_vode/greska"
@@ -72,7 +72,7 @@ void parseStateMessage(const std::string& message) {
     }
 }
 
-// Funkcija za parsiranje temperature poruke od kontrolera
+// Funkcija za parsiranje temperature od kontrolera
 void parseTemperatureMessage(const std::string& message) {
     try {
         currentActuatorData.temperatura = std::stoi(message);
@@ -91,7 +91,8 @@ std::string readJsonFromFile(const std::string& filename) {
     return "";
 }
 
-// Funkcija za kreiranje i pisanje JSON datoteke sa stanjem grejača
+// Funkcija za kreiranje i pisanje JSON datoteke sa stanjem grejača i ciljnom temperaturom
+// Format {"aktivan": true/false, "temperatura": int}
 void writeGrejacJsonToFile(const ActuatorData& data, const std::string& filename = "grejac.json") {
     std::ofstream file(filename);
     if (file.is_open()) {
@@ -110,15 +111,18 @@ void writeGrejacJsonToFile(const ActuatorData& data, const std::string& filename
 void on_connect(struct mosquitto *mosq, void *obj, int reason_code) {
     std::cout << "Povezan sa MQTT brokerom, kod: " << reason_code << std::endl;
     if(reason_code == 0) {
-        mosquitto_subscribe(mosq, NULL, GREJAC_STATE, 0);
+        mosquitto_subscribe(mosq, NULL, GREJAC_STANJE, 0);
         mosquitto_subscribe(mosq, NULL, GREJAC_TEMPERATURA, 0);
-        std::cout << "Pretplaćeno na teme: " << GREJAC_STATE << ", " << GREJAC_TEMPERATURA << std::endl;
+        std::cout << "Pretplaćeno na teme: " << GREJAC_STANJE << ", " << GREJAC_TEMPERATURA << std::endl;
+    }
+    else {
+        std::cerr << "Povezivanje nije uspelo, kod: " << reason_code << std::endl;
     }
 }
 
 // Callback funkcija za primanje poruka
 void on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message *message) {
-    if(!strcmp(message->topic, GREJAC_STATE)) {
+    if(!strcmp(message->topic, GREJAC_STANJE)) {
         if(message->payloadlen) {
             std::string payload((char*)message->payload, message->payloadlen);
             std::cout << "Primljena poruka na temi " << message->topic << ": " << payload << std::endl;
