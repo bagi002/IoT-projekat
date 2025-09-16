@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 Test skript za generisanje JSON podataka grejaca
-Ovaj skript simulira ponašanje Python skripte koja čita podatke sa senzora
-i zapisuje ih u JSON format koji C++ program može da parsira.
+i njihovo čuvanje u datoteku podaci.json.
 """
 
 import json
@@ -11,11 +10,6 @@ import time
 import os
 
 def generate_sensor_data():
-    """Generiše random podatke senzora u JSON formatu"""
-    
-    # Random temperatura između 15 i 35 stepeni
-    temperatura = round(random.uniform(15.0, 35.0), 1)
-    
     
     # Random baterija između 10 i 100 procenata
     baterija = random.randint(10, 100)
