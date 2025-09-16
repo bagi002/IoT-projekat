@@ -106,17 +106,18 @@
 | ploca1/beton/temperatura                | Senzor u betonu       | Kontroler     |
 | ploca1/beton/vlaznost                   | Senzor u betonu       | Kontroler     |
 | ploca1/beton/greska                     | Senzor u betonu       | Kontroler     |
-| ploca1/beton/batery                     | Senzor u betonu       | Kontroler     |
+| ploca1/beton/baterija                   | Senzor u betonu       | Kontroler     |
 | ploca1/povrsina/temperatura             | Senzor iznad betona   | Kontroler     |
 | ploca1/povrsina/vlaznost                | Senzor iznad betona   | Kontroler     |
 | ploca1/povrsina/greska                  | Senzor iznad betona   | Kontroler     |
-| ploca1/povrsina/batery                  | Senzor iznad betona   | Kontroler     |
-| ploca1/vodena_pumpa/ventil/state        | Kontroler             | Pumpa za vodu |
-| ploca1/vodena_pumpa/ventil/error        | Pumpa za vodu         | Kontroler     |
-| ploca1/vodena_pumpa/batery              | Pumpa za vodu         | Kontroler     |
-| ploca1/grijac_vode/state                | Kontroler             | Grijač vode   |
-| ploca1/grijac_vode/temperatura          | Grijač vode           | Kontroler     |
-| ploca1/grijac_vode/batery               | Grijač vode           | Kontroler     |
+| ploca1/povrsina/baterija                | Senzor iznad betona   | Kontroler     |
+| ploca1/vodena_pumpa/ventil/stanje       | Kontroler             | Pumpa za vodu |
+| ploca1/vodena_pumpa/ventil/vreme_rada   | Kontroler             | Pumpa za vodu |
+| ploca1/vodena_pumpa/ventil/greska       | Pumpa za vodu         | Kontroler     |
+| ploca1/vodena_pumpa/baterija            | Pumpa za vodu         | Kontroler     |
+| ploca1/grijac_vode/stanje               | Kontroler             | Grijač vode   |
+| ploca1/grijac_vode/temperatura          | Kontroler             | Grijač vode   |
+| ploca1/grijac_vode/baterija             | Grijač vode           | Kontroler     |
 | ploca1/grijac_vode/greska               | Grijač vode           | Kontroler     |
 
 ### 🌐 HTTP Protokol (Kontroler ↔ Aplikacija)
