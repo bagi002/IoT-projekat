@@ -9,8 +9,8 @@ import random
 import time
 import os
 
-def generate_sensor_data():
-    
+def generate_actuator_data():
+
     # Random baterija između 10 i 100 procenata
     baterija = random.randint(10, 100)
     
@@ -64,7 +64,7 @@ def continuous_mode():
     
     try:
         while True:
-            data = generate_sensor_data()
+            data = generate_actuator_data()
             if write_json_to_file(data):
                 print(f"Novi podaci: {json.dumps(data, ensure_ascii=False)}")
             time.sleep(10)
@@ -85,7 +85,7 @@ def main():
     elif choice == "2":
         continuous_mode()
     elif choice == "3":
-        data = generate_sensor_data()
+        data = generate_actuator_data()
         write_json_to_file(data)
         print(f"Generirani podaci: {json.dumps(data, ensure_ascii=False)}")
         print("Podaci zapisani u podaci.json")
