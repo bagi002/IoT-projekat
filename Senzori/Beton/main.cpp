@@ -13,10 +13,10 @@
 #define MQTT_KEEPALIVE      60
 #define MQTT_CLIENT_ID      "BetonSenzorClient"
 
-#define PLOCA1_TEMPERATURA "ploca1/beton/temperatura"
-#define PLOCA1_VLAZNOST    "ploca1/beton/vlaznost"
-#define PLOCA1_GRESKA      "ploca1/beton/greska"
-#define PLOCA1_BATERIJA    "ploca1/beton/baterija"
+#define BETON_TEMPERATURA "ploca1/beton/temperatura"
+#define BETON_VLAZNOST    "ploca1/beton/vlaznost"
+#define BETON_GRESKA      "ploca1/beton/greska"
+#define BETON_BATERIJA    "ploca1/beton/baterija"
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -89,28 +89,28 @@ void publishSensorData(struct mosquitto* mosq, const SensorData& data) {
 
     // Publish temperatura
     snprintf(buffer, sizeof(buffer), "%.1f", data.temperatura);
-    rc = mosquitto_publish(mosq, NULL, PLOCA1_TEMPERATURA, strlen(buffer), buffer, 0, false);
+    rc = mosquitto_publish(mosq, NULL, BETON_TEMPERATURA, strlen(buffer), buffer, 0, false);
     if (rc != MOSQ_ERR_SUCCESS) {
         std::cerr << "Greška pri slanju podataka o temperaturi: " << mosquitto_strerror(rc) << std::endl;
     }
 
     // Publish vlaznost
     snprintf(buffer, sizeof(buffer), "%.1f", data.vlaznost);
-    rc = mosquitto_publish(mosq, NULL, PLOCA1_VLAZNOST, strlen(buffer), buffer, 0, false);
+    rc = mosquitto_publish(mosq, NULL, BETON_VLAZNOST, strlen(buffer), buffer, 0, false);
     if (rc != MOSQ_ERR_SUCCESS) {
         std::cerr << "Greška pri slanju podataka o vlaznosti: " << mosquitto_strerror(rc) << std::endl;
     }
 
     // Publish baterija
     snprintf(buffer, sizeof(buffer), "%d", data.baterija);
-    rc = mosquitto_publish(mosq, NULL, PLOCA1_BATERIJA, strlen(buffer), buffer, 0, false);
+    rc = mosquitto_publish(mosq, NULL, BETON_BATERIJA, strlen(buffer), buffer, 0, false);
     if (rc != MOSQ_ERR_SUCCESS) {
         std::cerr << "Greška pri slanju podataka o bateriji: " << mosquitto_strerror(rc) << std::endl;
     }
 
     // Publish greska ako postoji
     if (data.hasGreska) {
-        rc = mosquitto_publish(mosq, NULL, PLOCA1_GRESKA, data.greska.length(), data.greska.c_str(), 0, false);
+        rc = mosquitto_publish(mosq, NULL, BETON_GRESKA, data.greska.length(), data.greska.c_str(), 0, false);
         if (rc != MOSQ_ERR_SUCCESS) {
             std::cerr << "Greška pri slanju podataka o grešci: " << mosquitto_strerror(rc) << std::endl;
         }
