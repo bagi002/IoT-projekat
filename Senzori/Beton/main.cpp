@@ -15,8 +15,8 @@
 
 #define BETON_TEMPERATURA "ploca1/beton/temperatura"
 #define BETON_VLAZNOST    "ploca1/beton/vlaznost"
-#define BETON_GRESKA      "ploca1/beton/greska"
-#define BETON_BATERIJA    "ploca1/beton/baterija"
+#define SENZOR_GRESKA      "ploca1/beton/greska"
+#define SENZOR_BATERIJA    "ploca1/beton/baterija"
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -103,14 +103,14 @@ void publishSensorData(struct mosquitto* mosq, const SensorData& data) {
 
     // Publish baterija
     snprintf(buffer, sizeof(buffer), "%d", data.baterija);
-    rc = mosquitto_publish(mosq, NULL, BETON_BATERIJA, strlen(buffer), buffer, 0, false);
+    rc = mosquitto_publish(mosq, NULL, SENZOR_BATERIJA, strlen(buffer), buffer, 0, false);
     if (rc != MOSQ_ERR_SUCCESS) {
         std::cerr << "Greška pri slanju podataka o bateriji: " << mosquitto_strerror(rc) << std::endl;
     }
 
     // Publish greska ako postoji
     if (data.hasGreska) {
-        rc = mosquitto_publish(mosq, NULL, BETON_GRESKA, data.greska.length(), data.greska.c_str(), 0, false);
+        rc = mosquitto_publish(mosq, NULL, SENZOR_GRESKA, data.greska.length(), data.greska.c_str(), 0, false);
         if (rc != MOSQ_ERR_SUCCESS) {
             std::cerr << "Greška pri slanju podataka o grešci: " << mosquitto_strerror(rc) << std::endl;
         }
