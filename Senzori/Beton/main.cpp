@@ -13,8 +13,8 @@
 #define MQTT_KEEPALIVE      60
 #define MQTT_CLIENT_ID      "BetonSenzorClient"
 
-#define BETON_TEMPERATURA "ploca1/beton/temperatura"
-#define BETON_VLAZNOST    "ploca1/beton/vlaznost"
+#define BETON_TEMPERATURA  "ploca1/beton/temperatura"
+#define BETON_VLAZNOST     "ploca1/beton/vlaznost"
 #define SENZOR_GRESKA      "ploca1/beton/greska"
 #define SENZOR_BATERIJA    "ploca1/beton/baterija"
 
