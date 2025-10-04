@@ -41,3 +41,13 @@ void on_connect(struct mosquitto *mosq, void *obj, int reason_code) {
         std::cerr << "Povezivanje nije uspelo, kod: " << reason_code << std::endl;
     }
 }
+
+// Callback funkcija za primanje poruka
+void on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message *message) {
+    if(message->payloadlen) {
+        std::string payload((char*)message->payload, message->payloadlen);
+        std::cout << "Primljena poruka na temi " << message->topic << ": " << payload << std::endl;
+    } else {
+        std::cout << "Primljena prazna poruka na temi " << message->topic << std::endl;
+    }
+}
