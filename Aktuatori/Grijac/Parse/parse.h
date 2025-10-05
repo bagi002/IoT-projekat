@@ -2,6 +2,7 @@
 #define PARSE_H
 
 #include <string>
+#include "../../common/file_mutex.h"
 
 struct ActuatorData {
     int baterija;

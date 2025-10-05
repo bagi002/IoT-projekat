@@ -59,26 +59,33 @@ void parseTemperatureMessage(const std::string& message) {
 
 // Funkcija za kreiranje i pisanje JSON datoteke sa stanjem grejača i ciljnom temperaturom
 void writeGrejacJsonToFile(const ActuatorData& data, const std::string& filename) {
+    std::lock_guard<std::mutex> lock(aktuatori_file_mutex); // Zaključavanje mutex-a
+    
     std::ifstream inFile(filename);
     std::string existingContent = "";
     
-    // Čitaj postojeći sadržaj
+    // Učitaj ceo sadržaj fajla
     if (inFile.is_open()) {
         std::string line;
         while (std::getline(inFile, line)) {
-            existingContent += line;
+            existingContent += line + "\n";
         }
         inFile.close();
     }
     
+    // Sada prepiši fajl sa ažuriranim heater delom
     std::ofstream file(filename);
     if (file.is_open()) {
-        // Ako je datoteka bila prazna ili sadrži samo {}
+        // Ako je fajl prazan, kreiraj početni JSON
         if (existingContent.empty() || existingContent.find_first_not_of(" \t\n\r{}") == std::string::npos) {
-            file << "{\n    \"heater\": {\"status\": " << data.aktivan 
-                 << ", \"temperature\": " << data.temperatura << "}\n}";
+            file << "{\n";
+            file << "    \"heater\": {\n";
+            file << "        \"status\": " << data.aktivan << ",\n";
+            file << "        \"temperature\": " << data.temperatura << "\n";
+            file << "    }\n";
+            file << "}\n";
         } else {
-            // Pronađi postojeći heater entry i zameni ga
+            // Pronađi heater entry i zameni samo njegovu vrednost
             size_t heaterPos = existingContent.find("\"heater\"");
             if (heaterPos != std::string::npos) {
                 // Pronađi početak heater objekta
@@ -93,26 +100,45 @@ void writeGrejacJsonToFile(const ActuatorData& data, const std::string& filename
                         endObj++;
                     }
                     
-                    // Zameni heater entry
+                    // Zameni heater entry sa novim vrednostima
                     std::string before = existingContent.substr(0, heaterPos);
                     std::string after = existingContent.substr(endObj);
                     
-                    file << before << "\"heater\": {\"status\": " << data.aktivan 
-                         << ", \"temperature\": " << data.temperatura << "}" << after;
+                    file << before << "\"heater\": {\n";
+                    file << "        \"status\": " << data.aktivan << ",\n";
+                    file << "        \"temperature\": " << data.temperatura << "\n";
+                    file << "    }" << after;
                 }
             } else {
-                // Dodaj heater entry ako ne postoji
+                // Dodaj heater entry ako ne postoji, ali sačuvaj sve postojeće podatke
+                size_t firstBrace = existingContent.find_first_of('{');
                 size_t lastBrace = existingContent.find_last_of('}');
-                if (lastBrace != std::string::npos) {
-                    std::string beforeBrace = existingContent.substr(0, lastBrace);
-                    // Dodaj zarez ako već postoje podaci
-                    if (beforeBrace.find_first_not_of(" \t\n\r{") != std::string::npos) {
-                        file << beforeBrace << ",\n    \"heater\": {\"status\": " << data.aktivan 
-                             << ", \"temperature\": " << data.temperatura << "}\n}";
-                    } else {
-                        file << "{\n    \"heater\": {\"status\": " << data.aktivan 
-                             << ", \"temperature\": " << data.temperatura << "}\n}";
+                
+                if (firstBrace != std::string::npos && lastBrace != std::string::npos) {
+                    // Izvuci sadržaj između zagrada (postojeći objekti kao pump)
+                    std::string innerContent = existingContent.substr(firstBrace + 1, lastBrace - firstBrace - 1);
+                    
+                    // Ukloni trailing whitespace
+                    size_t lastNonWhitespace = innerContent.find_last_not_of(" \t\n\r");
+                    if (lastNonWhitespace != std::string::npos) {
+                        innerContent = innerContent.substr(0, lastNonWhitespace + 1);
                     }
+                    
+                    // Proveri da li postoje neki podaci (npr. pump)
+                    bool hasExistingData = innerContent.find("\"pump\"") != std::string::npos;
+                    
+                    file << "{\n";
+                    
+                    if (hasExistingData) {
+                        // Prvo dodaj postojeće podatke (pump), pa onda heater
+                        file << innerContent << ",\n";
+                    }
+                    
+                    file << "    \"heater\": {\n";
+                    file << "        \"status\": " << data.aktivan << ",\n";
+                    file << "        \"temperature\": " << data.temperatura << "\n";
+                    file << "    }\n";
+                    file << "}\n";
                 }
             }
         }

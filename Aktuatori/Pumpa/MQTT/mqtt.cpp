@@ -5,7 +5,7 @@
 
 #define PUMPA_STANJE        "ploca1/vodena_pumpa/ventil/stanje"
 #define PUMPA_VREME_RADA    "ploca1/vodena_pumpa/ventil/vreme_rada"
-#define PUMPA_BATERIJA      "ploca1/vodena_pumpa/ventil/baterija"
+#define PUMPA_BATERIJA      "ploca1/vodena_pumpa/baterija"
 #define PUMPA_GRESKA        "ploca1/vodena_pumpa/ventil/greska"
 
 // Eksterna promenljiva za stanje aktuatora

@@ -7,8 +7,6 @@
 #define DEBUG 1
 #endif
 
-
-
 // Funkcija za citanje JSON sadržaja iz datoteke
 std::string readJsonFromFile(const std::string& filename) {
     std::ifstream file(filename);
@@ -62,32 +60,39 @@ void parseDurationMessage(const std::string& message) {
 // Funkcija za kreiranje i pisanje JSON fajla sa stanjem vodene pumpe i vremenom rada
 // Format {"pump": {"status": 1/0, "runtime_seconds": int}}
 void writePumpJsonToFile(const ActuatorData& data, const std::string& filename) {
+    std::lock_guard<std::mutex> lock(aktuatori_file_mutex); // Zaključavanje mutex-a
+    
     std::ifstream inFile(filename);
     std::string existingContent = "";
     
-    // Read existing content
+    // Učitaj ceo sadržaj fajla
     if (inFile.is_open()) {
         std::string line;
         while (std::getline(inFile, line)) {
-            existingContent += line;
+            existingContent += line + "\n";
         }
         inFile.close();
     }
     
+    // Sada prepiši fajl sa ažuriranim pump delom
     std::ofstream file(filename);
     if (file.is_open()) {
-        // If file was empty or contains only {}
+        // Ako je fajl prazan, kreiraj početni JSON
         if (existingContent.empty() || existingContent.find_first_not_of(" \t\n\r{}") == std::string::npos) {
-            file << "{\n    \"pump\": {\"status\": " << data.aktivan 
-                 << ", \"runtime_seconds\": " << data.vreme_rada << "}\n}";
+            file << "{\n";
+            file << "    \"pump\": {\n";
+            file << "        \"status\": " << data.aktivan << ",\n";
+            file << "        \"runtime_seconds\": " << data.vreme_rada << "\n";
+            file << "    }\n";
+            file << "}\n";
         } else {
-            // Find existing pump entry and replace it
+            // Pronađi pump entry i zameni samo njegovu vrednost
             size_t pumpPos = existingContent.find("\"pump\"");
             if (pumpPos != std::string::npos) {
-                // Find start of pump object
+                // Pronađi početak pump objekta (zagrada nakon "pump":)
                 size_t startObj = existingContent.find("{", pumpPos);
                 if (startObj != std::string::npos) {
-                    // Find end of pump object
+                    // Pronađi kraj pump objekta - zatvarajuću zagradu
                     int braceCount = 1;
                     size_t endObj = startObj + 1;
                     while (endObj < existingContent.length() && braceCount > 0) {
@@ -96,26 +101,49 @@ void writePumpJsonToFile(const ActuatorData& data, const std::string& filename) 
                         endObj++;
                     }
                     
-                    // Replace pump entry
+                    // 'before' sadrži sve pre "pump" (uključujući otvarajuću { glavnog objekta)
+                    // 'after' sadrži sve nakon zatvarajuće } pump objekta (zarez, heater, itd.)
                     std::string before = existingContent.substr(0, pumpPos);
                     std::string after = existingContent.substr(endObj);
                     
-                    file << before << "\"pump\": {\"status\": " << data.aktivan 
-                         << ", \"runtime_seconds\": " << data.vreme_rada << "}" << after;
+                    // Zapiši: before + novi pump objekat + after
+                    file << before << "\"pump\": {\n";
+                    file << "        \"status\": " << data.aktivan << ",\n";
+                    file << "        \"runtime_seconds\": " << data.vreme_rada << "\n";
+                    file << "    }" << after;
                 }
             } else {
-                // Add pump entry if it doesn't exist
+                // Dodaj pump entry ako ne postoji, ali sačuvaj sve postojeće podatke
+                size_t firstBrace = existingContent.find_first_of('{');
                 size_t lastBrace = existingContent.find_last_of('}');
-                if (lastBrace != std::string::npos) {
-                    std::string beforeBrace = existingContent.substr(0, lastBrace);
-                    // Add comma if data already exists
-                    if (beforeBrace.find_first_not_of(" \t\n\r{") != std::string::npos) {
-                        file << beforeBrace << ",\n    \"pump\": {\"status\": " << data.aktivan 
-                             << ", \"runtime_seconds\": " << data.vreme_rada << "}\n}";
-                    } else {
-                        file << "{\n    \"pump\": {\"status\": " << data.aktivan 
-                             << ", \"runtime_seconds\": " << data.vreme_rada << "}\n}";
+                
+                if (firstBrace != std::string::npos && lastBrace != std::string::npos) {
+                    // Izvuci sadržaj između zagrada (postojeći objekti kao heater)
+                    std::string innerContent = existingContent.substr(firstBrace + 1, lastBrace - firstBrace - 1);
+                    
+                    // Ukloni trailing whitespace
+                    size_t lastNonWhitespace = innerContent.find_last_not_of(" \t\n\r");
+                    if (lastNonWhitespace != std::string::npos) {
+                        innerContent = innerContent.substr(0, lastNonWhitespace + 1);
                     }
+                    
+                    // Proveri da li postoje neki podaci (npr. heater)
+                    bool hasExistingData = innerContent.find("\"heater\"") != std::string::npos;
+                    
+                    file << "{\n";
+                    file << "    \"pump\": {\n";
+                    file << "        \"status\": " << data.aktivan << ",\n";
+                    file << "        \"runtime_seconds\": " << data.vreme_rada << "\n";
+                    file << "    }";
+                    
+                    if (hasExistingData) {
+                        // Dodaj zarez i postojeće podatke
+                        file << ",\n" << innerContent << "\n";
+                    } else {
+                        file << "\n";
+                    }
+                    
+                    file << "}\n";
                 }
             }
         }
