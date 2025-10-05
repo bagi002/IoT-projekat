@@ -5,7 +5,6 @@
 #define GREJAC_STANJE        "ploca1/grejac_vode/stanje"
 #define GREJAC_TEMPERATURA   "ploca1/grejac_vode/temperatura"
 #define GREJAC_BATERIJA      "ploca1/grejac_vode/baterija"
-#define GREJAC_GRESKA        "ploca1/grejac_vode/greska"
 
 
 // Callback funkcija za povezivanje
@@ -59,13 +58,5 @@ void publishActuatorData(struct mosquitto* mosq, const ActuatorData& data) {
     rc = mosquitto_publish(mosq, NULL, GREJAC_BATERIJA, strlen(buffer), buffer, 0, false);
     if (rc != MOSQ_ERR_SUCCESS) {
         std::cerr << "Greška pri slanju podataka o bateriji: " << mosquitto_strerror(rc) << std::endl;
-    }
-
-    // Publish greska ako postoji
-    if (data.hasGreska) {
-        rc = mosquitto_publish(mosq, NULL, GREJAC_GRESKA, data.greska.length(), data.greska.c_str(), 0, false);
-        if (rc != MOSQ_ERR_SUCCESS) {
-            std::cerr << "Greška pri slanju podataka o grešci: " << mosquitto_strerror(rc) << std::endl;
-        }
     }
 }

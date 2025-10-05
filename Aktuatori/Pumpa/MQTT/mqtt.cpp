@@ -6,7 +6,6 @@
 #define PUMPA_STANJE        "ploca1/vodena_pumpa/ventil/stanje"
 #define PUMPA_VREME_RADA    "ploca1/vodena_pumpa/ventil/vreme_rada"
 #define PUMPA_BATERIJA      "ploca1/vodena_pumpa/baterija"
-#define PUMPA_GRESKA        "ploca1/vodena_pumpa/ventil/greska"
 
 // Eksterna promenljiva za stanje aktuatora
 extern ActuatorData currentActuatorData;
@@ -62,13 +61,5 @@ void publishActuatorData(struct mosquitto* mosq, const ActuatorData& data) {
     rc = mosquitto_publish(mosq, NULL, PUMPA_BATERIJA, strlen(buffer), buffer, 0, false);
     if (rc != MOSQ_ERR_SUCCESS) {
         std::cerr << "Greška pri slanju podataka o bateriji: " << mosquitto_strerror(rc) << std::endl;
-    }
-
-    // Publish greska ako postoji
-    if (data.hasGreska) {
-        rc = mosquitto_publish(mosq, NULL, PUMPA_GRESKA, data.greska.length(), data.greska.c_str(), 0, false);
-        if (rc != MOSQ_ERR_SUCCESS) {
-            std::cerr << "Greška pri slanju podataka o grešci: " << mosquitto_strerror(rc) << std::endl;
-        }
     }
 }

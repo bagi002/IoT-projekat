@@ -17,7 +17,7 @@
 #endif
 
 // Globalna varijabla za čuvanje stanja aktuatora
-ActuatorData currentActuatorData = {0, false, "", 0, 0};
+ActuatorData currentActuatorData = {0, 0, 0};
 
 int main() {
 
@@ -65,11 +65,6 @@ int main() {
                 // Debug flag
                 if (DEBUG) {
                     std::cout << "  Baterija: " << actuatorData.baterija << "%" << std::endl;
-                    if (actuatorData.hasGreska) {
-                        std::cout << "  Greska: " << actuatorData.greska << std::endl;
-                    } else {
-                        std::cout << "  Greska: nema" << std::endl;
-                    }
                     std::cout << "---" << std::endl;
                 }   
             
