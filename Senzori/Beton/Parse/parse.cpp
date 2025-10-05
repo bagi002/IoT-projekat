@@ -5,33 +5,35 @@
 SensorData parseJsonData(const std::string& jsonStr) {
     SensorData data = {};
     
-    // Parsiranje temperature
-    size_t tempPos = jsonStr.find("\"temperatura\":");
+    // Parsiranje temperature (može biti negativna)
+    size_t tempPos = jsonStr.find("\"temperature\":");
     if (tempPos != std::string::npos) {
-        size_t start = jsonStr.find_first_of("0123456789.-", tempPos);
-        size_t end = jsonStr.find_first_of(",}", start);
+        size_t start = jsonStr.find_first_of("-0123456789", tempPos);
+        size_t end = jsonStr.find_first_of(",}\n", start);
         if (start != std::string::npos && end != std::string::npos) {
             data.temperatura = std::stod(jsonStr.substr(start, end - start));
         }
     }
     
-    // Parsiranje vlaznosti
-    size_t vlazPos = jsonStr.find("\"vlaznost\":");
+    // Parsiranje vlažnosti
+    size_t vlazPos = jsonStr.find("\"humidity\":");
     if (vlazPos != std::string::npos) {
-        size_t start = jsonStr.find_first_of("0123456789.-", vlazPos);
-        size_t end = jsonStr.find_first_of(",}", start);
+        size_t start = jsonStr.find_first_of("0123456789", vlazPos);
+        size_t end = jsonStr.find_first_of(",}\n", start);
         if (start != std::string::npos && end != std::string::npos) {
             data.vlaznost = std::stod(jsonStr.substr(start, end - start));
         }
     }
     
-    // Parsiranje baterije
-    size_t batPos = jsonStr.find("\"baterija\":");
+    // Parsiranje baterije (battery_level je decimalan broj, konvertujemo u ceo broj)
+    size_t batPos = jsonStr.find("\"battery_level\":");
     if (batPos != std::string::npos) {
         size_t start = jsonStr.find_first_of("0123456789", batPos);
-        size_t end = jsonStr.find_first_of(",}", start);
+        size_t end = jsonStr.find_first_of(",}\n", start);
         if (start != std::string::npos && end != std::string::npos) {
-            data.baterija = std::stoi(jsonStr.substr(start, end - start));
+            // Parsiramo kao double pa konvertujemo u int
+            double batteryDouble = std::stod(jsonStr.substr(start, end - start));
+            data.baterija = static_cast<int>(batteryDouble);
         }
     }
     
@@ -56,9 +58,15 @@ SensorData parseJsonData(const std::string& jsonStr) {
 // Funkcija za čitanje JSON podataka iz datoteke
 std::string readJsonFromFile(const std::string& filename) {
     std::ifstream file(filename);
+    std::string content;
     std::string line;
-    if (std::getline(file, line)) {
-        return line;
+    
+    if (file.is_open()) {
+        while (std::getline(file, line)) {
+            content += line;
+        }
+        file.close();
     }
-    return "";
+    
+    return content;
 }
