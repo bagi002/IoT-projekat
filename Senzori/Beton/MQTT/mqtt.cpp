@@ -5,7 +5,6 @@
 
 #define BETON_TEMPERATURA  "ploca1/beton/temperatura"
 #define BETON_VLAZNOST     "ploca1/beton/vlaznost"
-#define SENZOR_GRESKA      "ploca1/beton/greska"
 #define SENZOR_BATERIJA    "ploca1/beton/baterija"
 
 // Funkcija za slanje podataka na MQTT broker

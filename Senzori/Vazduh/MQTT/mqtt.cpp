@@ -4,7 +4,6 @@
 
 #define VAZDUH_TEMPERATURA "ploca1/povrsina/temperatura"
 #define VAZDUH_VLAZNOST    "ploca1/povrsina/vlaznost"
-#define SENZOR_GRESKA      "ploca1/povrsina/greska"
 #define SENZOR_BATERIJA    "ploca1/povrsina/baterija"
 
 // Funkcija za slanje podataka na MQTT broker
