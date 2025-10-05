@@ -5,6 +5,11 @@ let lastNotificationCount = 0;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 IoT Frontend loaded at:', new Date().toISOString());
+    
+    // Check if all required elements exist
+    checkRequiredElements();
+    
     initializeTabs();
     initializeCharts();
     initializeEventListeners();
@@ -13,7 +18,44 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set initial tab
     showTab('dashboard');
+    
+    // Initial notification load with debug info
+    console.log('📡 Starting initial notification load...');
+    loadNotifications();
 });
+
+// Check if all required DOM elements exist
+function checkRequiredElements() {
+    console.log('🔍 Checking required DOM elements...');
+    
+    const requiredElements = [
+        'beton-temp', 'beton-humidity', 'beton-battery', 'beton-status',
+        'vazduh-temp', 'vazduh-humidity', 'vazduh-battery', 'vazduh-status', 
+        'pumpa-active', 'pumpa-battery', 'pumpa-status',
+        'grijac-active', 'grijac-battery', 'grijac-status', 'grijac-temp',
+        'connection-status'
+    ];
+    
+    let allElementsFound = true;
+    
+    requiredElements.forEach(elementId => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            console.log(`✅ Element found: ${elementId}`);
+        } else {
+            console.error(`❌ Missing element: ${elementId}`);
+            allElementsFound = false;
+        }
+    });
+    
+    if (allElementsFound) {
+        console.log('🎉 All required elements found!');
+    } else {
+        console.error('⚠️  Some elements are missing!');
+    }
+    
+    return allElementsFound;
+}
 
 // Tab management
 function initializeTabs() {
@@ -53,11 +95,51 @@ function showTab(tabName) {
 // Initialize event listeners
 function initializeEventListeners() {
     // History controls
-    document.getElementById('refresh-charts').addEventListener('click', loadHistoryData);
-    document.getElementById('time-range').addEventListener('change', loadHistoryData);
+    const refreshBtn = document.getElementById('refresh-charts');
+    const timeRange = document.getElementById('time-range');
+    
+    if (refreshBtn) refreshBtn.addEventListener('click', loadHistoryData);
+    if (timeRange) timeRange.addEventListener('change', loadHistoryData);
     
     // Notification controls
-    document.getElementById('clear-all-notifications').addEventListener('click', clearAllNotifications);
+    const markAllReadBtn = document.getElementById('mark-all-read');
+    const clearReadBtn = document.getElementById('clear-read-notifications');
+    const clearAllBtn = document.getElementById('clear-all-notifications');
+    
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
+    }
+    
+    if (clearReadBtn) {
+        clearReadBtn.addEventListener('click', clearReadNotifications);
+    }
+    
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', clearAllNotifications);
+    }
+    
+    // Event delegation for notification actions
+    const notificationsList = document.getElementById('notifications-list');
+    if (notificationsList) {
+        notificationsList.addEventListener('click', function(e) {
+            const button = e.target.closest('button[data-action]');
+            if (button) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const action = button.getAttribute('data-action');
+                const id = parseInt(button.getAttribute('data-id'));
+                
+                if (!isNaN(id)) {
+                    if (action === 'acknowledge') {
+                        acknowledgeNotification(id);
+                    } else if (action === 'delete') {
+                        deleteNotification(id);
+                    }
+                }
+            }
+        });
+    }
 }
 
 // Time management
@@ -76,6 +158,8 @@ function updateCurrentTime() {
 
 // Data refresh
 function startDataRefresh() {
+    console.log('🔄 Starting automatic data refresh...');
+    
     // Update time every second
     setInterval(updateCurrentTime, 1000);
     
@@ -85,100 +169,173 @@ function startDataRefresh() {
     // Check for new notifications every 10 seconds
     setInterval(checkNewNotifications, 10000);
     
-    // Initial load
-    loadDashboardData();
+    // Initial load with delay to ensure DOM is ready
+    setTimeout(() => {
+        console.log('🎯 Performing initial data load...');
+        loadDashboardData();
+    }, 1000);
 }
 
 // Dashboard data loading
 async function loadDashboardData() {
     try {
-        // Load data from individual endpoints
-        const [betonResponse, povrsinaResponse, pumpaResponse, grijacResponse] = await Promise.all([
-            fetch(`${API_BASE_URL}/senzori/beton`),
-            fetch(`${API_BASE_URL}/senzori/povrsina`),
-            fetch(`${API_BASE_URL}/pumpa/stanje`),
-            fetch(`${API_BASE_URL}/grijac/stanje`)
-        ]);
-
-        // Check for timeouts (simulate 1min timeout with 5 second timeout for demo)
-        const timeout = 5000; // 5 seconds for demo, should be 60000 for 1 minute
+        console.log('📡 Loading dashboard data from /api/dashboard...');
         
-        const betonData = betonResponse.ok ? await betonResponse.json() : null;
-        const povrsinaData = povrsinaResponse.ok ? await povrsinaResponse.json() : null;
-        const pumpaData = pumpaResponse.ok ? await pumpaResponse.json() : null;
-        const grijacData = grijacResponse.ok ? await grijacResponse.json() : null;
-
-        updateDashboard({
-            beton_sensor: betonData,
-            povrsina_sensor: povrsinaData,
-            pumpa: pumpaData,
-            grijac: grijacData
-        });
+        // Load data from new dashboard endpoint
+        const response = await fetch(`${API_BASE_URL}/dashboard`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const dashboardData = await response.json();
+        console.log('✅ Dashboard data received:', dashboardData);
+        
+        // Map backend data to frontend structure
+        const mappedData = {
+            beton_sensor: dashboardData.beton_senzor,
+            povrsina_sensor: dashboardData.povrsina_senzor,
+            pumpa: dashboardData.pumpa,
+            grijac: dashboardData.grijac
+        };
+        
+        console.log('🔄 Mapped data for frontend:', mappedData);
+        updateDashboard(mappedData);
         
         // Update connection status
         document.getElementById('connection-status').textContent = '● Online';
         document.getElementById('connection-status').className = 'status-online';
         
     } catch (error) {
-        console.error('Error loading dashboard data:', error);
+        console.error('❌ Error loading dashboard data:', error);
         
         // Update connection status
-        document.getElementById('connection-status').textContent = '● Offline';
-        document.getElementById('connection-status').className = 'status-offline';
+        const connectionStatus = document.getElementById('connection-status');
+        if (connectionStatus) {
+            connectionStatus.textContent = '● Offline';
+            connectionStatus.className = 'status-offline';
+        }
+        
+        // Set all devices offline
+        updateDashboard({
+            beton_sensor: null,
+            povrsina_sensor: null,
+            pumpa: null,
+            grijac: null
+        });
     }
 }
 
 function updateDashboard(data) {
+    console.log('🎯 UpdateDashboard called with:', data);
+    
     // Update Beton Sensor
-    if (data.beton_sensor) {
-        updateSensorCard('beton', data.beton_sensor);
+    console.log('🔍 Processing beton sensor...');
+    if (data.beton_sensor && data.beton_sensor.active && data.beton_sensor.data) {
+        console.log('✅ Beton sensor is active, updating with:', data.beton_sensor.data);
+        updateSensorCard('beton', data.beton_sensor.data);
     } else {
+        console.log('❌ Beton sensor is offline or no data');
         setSensorOffline('beton');
     }
     
     // Update Povrsina/Vazduh Sensor  
-    if (data.povrsina_sensor) {
-        updateSensorCard('vazduh', data.povrsina_sensor);
+    console.log('🔍 Processing povrsina sensor...');
+    if (data.povrsina_sensor && data.povrsina_sensor.active && data.povrsina_sensor.data) {
+        console.log('✅ Povrsina sensor is active, updating with:', data.povrsina_sensor.data);
+        updateSensorCard('vazduh', data.povrsina_sensor.data);
     } else {
+        console.log('❌ Povrsina sensor is offline or no data');
         setSensorOffline('vazduh');
     }
     
     // Update Pumpa
-    if (data.pumpa) {
-        updateActuatorCard('pumpa', data.pumpa);
+    console.log('🔍 Processing pumpa...');
+    if (data.pumpa && data.pumpa.active && data.pumpa.data) {
+        console.log('✅ Pumpa is active, updating with:', data.pumpa.data);
+        updateActuatorCard('pumpa', data.pumpa.data);
     } else {
+        console.log('❌ Pumpa is offline or no data');
         setActuatorOffline('pumpa');
     }
     
     // Update Grijač
-    if (data.grijac) {
-        updateActuatorCard('grijac', data.grijac);
+    console.log('🔍 Processing grijac...');
+    if (data.grijac && data.grijac.active && data.grijac.data) {
+        console.log('✅ Grijac is active, updating with:', data.grijac.data);
+        updateActuatorCard('grijac', data.grijac.data);
     } else {
+        console.log('❌ Grijac is offline or no data');
         setActuatorOffline('grijac');
     }
+    
+    console.log('🏁 Dashboard update completed');
 }
 
 function updateSensorCard(sensorType, sensorData) {
     const prefix = sensorType;
+    console.log(`🎯 updateSensorCard called for ${sensorType} with data:`, sensorData);
+    
+    // Verify all elements exist before updating
+    const tempElement = document.getElementById(`${prefix}-temp`);
+    const humidityElement = document.getElementById(`${prefix}-humidity`);
+    const batteryElement = document.getElementById(`${prefix}-battery`);
+    const statusElement = document.getElementById(`${prefix}-status`);
+    
+    if (!tempElement) {
+        console.error(`❌ Element ${prefix}-temp not found!`);
+        return;
+    }
+    if (!humidityElement) {
+        console.error(`❌ Element ${prefix}-humidity not found!`);
+        return;
+    }
+    if (!batteryElement) {
+        console.error(`❌ Element ${prefix}-battery not found!`);
+        return;
+    }
+    if (!statusElement) {
+        console.error(`❌ Element ${prefix}-status not found!`);
+        return;
+    }
+    
+    console.log(`✅ All elements found for ${prefix}`);
     
     // Temperature
-    document.getElementById(`${prefix}-temp`).textContent = `${sensorData.temperatura.toFixed(1)}°C`;
+    const temp = sensorData.temperatura !== null && sensorData.temperatura !== undefined 
+        ? `${sensorData.temperatura.toFixed(1)}°C` 
+        : '--°C';
+    console.log(`🌡️  Setting ${prefix}-temp to: ${temp}`);
+    tempElement.textContent = temp;
     
     // Humidity
-    document.getElementById(`${prefix}-humidity`).textContent = `${sensorData.vlaznost.toFixed(1)}%`;
+    const humidity = sensorData.vlaznost !== null && sensorData.vlaznost !== undefined 
+        ? `${sensorData.vlaznost.toFixed(1)}%` 
+        : '--%';
+    console.log(`💧 Setting ${prefix}-humidity to: ${humidity}`);
+    humidityElement.textContent = humidity;
     
     // Battery
-    const batteryLevel = sensorData.baterija;
-    document.getElementById(`${prefix}-battery`).textContent = `${batteryLevel}%`;
-    updateBatteryLevel(`${prefix}-battery-level`, batteryLevel);
+    const batteryLevel = sensorData.baterija || 0;
+    console.log(`🔋 Setting ${prefix}-battery to: ${batteryLevel}%`);
+    batteryElement.textContent = `${batteryLevel}%`;
+    
+    // Update battery level indicator if it exists
+    const batteryLevelElement = document.getElementById(`${prefix}-battery-level`);
+    if (batteryLevelElement) {
+        updateBatteryLevel(`${prefix}-battery-level`, batteryLevel);
+    }
     
     // Status
-    const statusElement = document.getElementById(`${prefix}-status`);
-    if (sensorData.greska === null) {
+    if (sensorData.greska === null || sensorData.greska === undefined) {
         statusElement.className = 'status-indicator online';
+        console.log(`🟢 Set ${prefix} status to online`);
     } else {
         statusElement.className = 'status-indicator offline';
+        console.log(`🔴 Set ${prefix} status to offline due to error:`, sensorData.greska);
     }
+    
+    console.log(`✅ Successfully updated ${prefix} sensor card`);
 }
 
 function setSensorOffline(sensorType) {
@@ -193,47 +350,75 @@ function setSensorOffline(sensorType) {
 
 function updateActuatorCard(actuatorType, actuatorData) {
     const prefix = actuatorType;
+    console.log(`🎯 updateActuatorCard called for ${actuatorType} with data:`, actuatorData);
     
-    // Status
+    // Verify essential elements exist
     const activeElement = document.getElementById(`${prefix}-active`);
+    const batteryElement = document.getElementById(`${prefix}-battery`);
+    const statusElement = document.getElementById(`${prefix}-status`);
+    
+    if (!activeElement) {
+        console.error(`❌ Element ${prefix}-active not found!`);
+        return;
+    }
+    if (!batteryElement) {
+        console.error(`❌ Element ${prefix}-battery not found!`);
+        return;
+    }
+    if (!statusElement) {
+        console.error(`❌ Element ${prefix}-status not found!`);
+        return;
+    }
+    
+    console.log(`✅ All elements found for ${prefix}`);
+    
+    // Status (Active/Inactive)
     let isActive = false;
-    
     if (actuatorType === 'pumpa') {
-        isActive = actuatorData.aktivna;
+        isActive = actuatorData.aktivna || false;
     } else if (actuatorType === 'grijac') {
-        isActive = actuatorData.aktivan;
+        isActive = actuatorData.aktivan || false;
     }
     
-    if (isActive) {
-        activeElement.textContent = actuatorType === 'pumpa' ? 'Aktivna' : 'Aktivan';
-        activeElement.className = 'status-text active';
-    } else {
-        activeElement.textContent = actuatorType === 'pumpa' ? 'Neaktivna' : 'Neaktivan';
-        activeElement.className = 'status-text inactive';
-    }
+    const statusText = actuatorType === 'pumpa' 
+        ? (isActive ? 'Aktivna' : 'Neaktivna')
+        : (isActive ? 'Aktivan' : 'Neaktivan');
+    
+    console.log(`⚡ Setting ${prefix} status to: ${statusText}`);
+    activeElement.textContent = statusText;
+    activeElement.className = isActive ? 'status-text active' : 'status-text inactive';
     
     // Battery
-    const batteryLevel = actuatorData.baterija;
-    document.getElementById(`${prefix}-battery`).textContent = `${batteryLevel}%`;
-    updateBatteryLevel(`${prefix}-battery-level`, batteryLevel);
+    const batteryLevel = actuatorData.baterija || 0;
+    console.log(`🔋 Setting ${prefix}-battery to: ${batteryLevel}%`);
+    batteryElement.textContent = `${batteryLevel}%`;
+    
+    // Update battery level indicator if it exists
+    const batteryLevelElement = document.getElementById(`${prefix}-battery-level`);
+    if (batteryLevelElement) {
+        updateBatteryLevel(`${prefix}-battery-level`, batteryLevel);
+    }
     
     // Status indicator
-    const statusElement = document.getElementById(`${prefix}-status`);
-    if (actuatorData.greska === null) {
+    if (actuatorData.greska === null || actuatorData.greska === undefined) {
         statusElement.className = 'status-indicator online';
+        console.log(`🟢 Set ${prefix} status indicator to online`);
     } else {
         statusElement.className = 'status-indicator offline';
+        console.log(`🔴 Set ${prefix} status indicator to offline due to error:`, actuatorData.greska);
     }
     
-    // Specific data
-    if (actuatorType === 'pumpa') {
-        // For pump, we'll show remaining time if available (not in new API, but keep for compatibility)
-        document.getElementById('pumpa-time').textContent = '0s';
+    // Specific temperature for grijac
+    if (actuatorType === 'grijac' && actuatorData.temperatura !== null && actuatorData.temperatura !== undefined) {
+        const grijacTempElement = document.getElementById('grijac-temp');
+        if (grijacTempElement) {
+            const tempValue = `${actuatorData.temperatura.toFixed(1)}°C`;
+            console.log(`🌡️  Setting grijac-temp to: ${tempValue}`);
+            grijacTempElement.textContent = tempValue;
+        }
     }
     
-    if (actuatorType === 'grijac' && actuatorData.temperatura) {
-        document.getElementById('grijac-temp').textContent = `${actuatorData.temperatura.toFixed(1)}°C`;
-    }
+    console.log(`✅ Successfully updated ${prefix} actuator card`);
 }
 
 function setActuatorOffline(actuatorType) {
@@ -528,177 +713,439 @@ function updateCharts(data) {
     humidityChart.update();
 }
 
-// Notifications
+// Notification management
+let notificationsList = [];
+let notificationsCache = new Map();
+
+// Load notifications from backend
 async function loadNotifications() {
     try {
+        console.log('📮 Loading notifications from backend...');
+        showNotificationsLoading(true);
+        
         const response = await fetch(`${API_BASE_URL}/notifikacije`);
-        const notifications = await response.json();
+        console.log('📮 Notifications API response status:', response.status);
         
-        displayNotifications(notifications);
-        updateNotificationBadge(notifications.filter(n => !n.acknowledged).length);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
+        const data = await response.json();
+        console.log('📮 Notifications data received:', data);
+        
+        if (data.success) {
+            notificationsList = data.notifikacije || [];
+            console.log(`📮 Loaded ${notificationsList.length} notifications`);
+            updateNotificationsDisplay();
+            updateNotificationsStats();
+        } else {
+            console.error('❌ Error loading notifications:', data.error);
+            showNotificationsError('Greška pri učitavanju notifikacija');
+        }
     } catch (error) {
-        console.error('Error loading notifications:', error);
+        console.error('❌ Failed to load notifications:', error);
+        showNotificationsError('Greška pri učitavanju notifikacija');
+    } finally {
+        showNotificationsLoading(false);
     }
 }
 
-function displayNotifications(notifications) {
-    const notificationsList = document.getElementById('notifications-list');
-    notificationsList.innerHTML = '';
+// Show/hide loading spinner
+function showNotificationsLoading(show) {
+    const container = document.getElementById('notifications-list');
+    if (show) {
+        container.innerHTML = `
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Učitavanje notifikacija...</p>
+            </div>
+        `;
+    }
+}
+
+// Show error message
+function showNotificationsError(message) {
+    const container = document.getElementById('notifications-list');
+    container.innerHTML = `
+        <div class="notifications-empty">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>${message}</p>
+            <button onclick="loadNotifications()" class="btn btn-primary">Pokušaj ponovo</button>
+        </div>
+    `;
+}
+
+// Update notifications display
+function updateNotificationsDisplay() {
+    console.log('🔔 updateNotificationsDisplay called with', notificationsList.length, 'notifications');
+    const container = document.getElementById('notifications-list');
     
-    if (notifications.length === 0) {
-        notificationsList.innerHTML = '<p style="text-align: center; color: #7f8c8d; padding: 20px;">Nema notifikacija</p>';
+    if (!container) {
+        console.error('❌ notifications-list element not found!');
         return;
     }
     
-    notifications.forEach(notification => {
-        const notificationElement = createNotificationElement(notification);
-        notificationsList.appendChild(notificationElement);
-    });
-}
-
-function createNotificationElement(notification) {
-    const div = document.createElement('div');
-    div.className = `notification-item ${notification.severity}`;
-    
-    if (notification.acknowledged) {
-        div.style.opacity = '0.6';
+    if (!notificationsList || notificationsList.length === 0) {
+        console.log('📝 No notifications to display');
+        container.innerHTML = `
+            <div class="notifications-empty">
+                <i class="fas fa-bell-slash"></i>
+                <h4>Nema notifikacija</h4>
+                <p>Trenutno nema novih notifikacija.</p>
+            </div>
+        `;
+        return;
     }
     
-    div.innerHTML = `
-        <div class="notification-content">
-            <div class="notification-type ${notification.severity}">${notification.type}</div>
-            <div class="notification-message">${notification.message}</div>
-            <div class="notification-time">${new Date(notification.timestamp).toLocaleString('sr-RS')}</div>
-        </div>
-        <div class="notification-actions">
-            ${!notification.acknowledged ? `<button class="btn btn-secondary" onclick="acknowledgeNotification(${notification.id})">
-                <i class="fas fa-check"></i> Potvrdi
-            </button>` : '<span style="color: #27ae60;"><i class="fas fa-check"></i> Potvrđeno</span>'}
-            <button class="btn btn-danger" onclick="deleteNotification(${notification.id})" title="Obriši notifikaciju">
-                <i class="fas fa-trash"></i>
-            </button>
+    // Sort notifications by time (newest first)
+    const sortedNotifications = [...notificationsList].sort((a, b) => 
+        new Date(b.vreme) - new Date(a.vreme)
+    );
+    
+    const html = sortedNotifications.map(notification => 
+        createNotificationHTML(notification)
+    ).join('');
+    
+    container.innerHTML = html;
+}
+
+// Create HTML for single notification
+function createNotificationHTML(notification) {
+    const readClass = notification.procitana ? 'read' : 'unread';
+    const typeClass = getNotificationTypeClass(notification.tip);
+    const formattedTime = formatNotificationTime(notification.vreme);
+    
+    return `
+        <div class="notification-item ${readClass} ${typeClass}" data-id="${notification.id}">
+            <div class="notification-header">
+                <h5 class="notification-title">
+                    ${notification.procitana ? '' : '<i class="fas fa-circle" style="font-size: 0.5em; color: #2196f3; margin-right: 8px;"></i>'}
+                    ${escapeHtml(notification.tip.toUpperCase())}
+                </h5>
+                <span class="notification-time">${formattedTime}</span>
+            </div>
+            <div class="notification-message">
+                ${escapeHtml(notification.poruka)}
+            </div>
+            <div class="notification-actions">
+                ${!notification.procitana ? 
+                    `<button class="btn btn-mark-read" onclick="markNotificationAsRead(${notification.id})">
+                        <i class="fas fa-check"></i> Označiti kao pročitano
+                    </button>` :
+                    `<button class="btn btn-mark-unread" onclick="markNotificationAsUnread(${notification.id})">
+                        <i class="fas fa-undo"></i> Označiti kao nepročitano
+                    </button>`
+                }
+                <button class="btn btn-delete" onclick="deleteNotification(${notification.id})">
+                    <i class="fas fa-trash"></i> Obriši
+                </button>
+            </div>
         </div>
     `;
-    
-    return div;
 }
 
-async function acknowledgeNotification(notificationId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/notifikacije/${notificationId}/acknowledge`, {
-            method: 'POST'
-        });
-        
-        if (response.ok) {
-            loadNotifications(); // Reload notifications
-        }
-        
-    } catch (error) {
-        console.error('Error acknowledging notification:', error);
+// Get notification type class for styling
+function getNotificationTypeClass(tip) {
+    const type = tip.toLowerCase();
+    if (type.includes('critical') || type.includes('kritična') || type.includes('greška')) {
+        return 'critical';
+    } else if (type.includes('warning') || type.includes('upozorenje')) {
+        return 'warning';
+    } else {
+        return 'info';
     }
 }
 
-async function deleteNotification(notificationId) {
+// Format notification time
+function formatNotificationTime(timeString) {
     try {
-        const response = await fetch(`${API_BASE_URL}/notifikacije/${notificationId}`, {
+        const date = new Date(timeString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        if (diffMins < 1) {
+            return 'Upravo';
+        } else if (diffMins < 60) {
+            return `Pre ${diffMins} min`;
+        } else if (diffHours < 24) {
+            return `Pre ${diffHours} h`;
+        } else if (diffDays < 7) {
+            return `Pre ${diffDays} dana`;
+        } else {
+            return date.toLocaleDateString('sr-RS', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    } catch (error) {
+        return timeString;
+    }
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+// Update notifications statistics
+function updateNotificationsStats() {
+    const total = notificationsList.length;
+    const unread = notificationsList.filter(n => !n.procitana).length;
+    const read = total - unread;
+    
+    const totalElement = document.getElementById('total-notifications');
+    const unreadElement = document.getElementById('unread-notifications');
+    const readElement = document.getElementById('read-notifications');
+    
+    if (totalElement) totalElement.textContent = `Ukupno: ${total}`;
+    if (unreadElement) unreadElement.textContent = `Nepročitane: ${unread}`;
+    if (readElement) readElement.textContent = `Pročitane: ${read}`;
+    
+    // Update tab badge
+    updateNotificationBadge(unread);
+}
+
+// Mark notification as read
+async function markNotificationAsRead(notificationId) {
+    try {
+        const response = await fetch('/api/notifikacije/procitaj', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: notificationId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update local cache
+            const notification = notificationsList.find(n => n.id === notificationId);
+            if (notification) {
+                notification.procitana = true;
+                updateNotificationsDisplay();
+                updateNotificationsStats();
+                showNotificationToast('Notifikacija označena kao pročitana', 'success');
+            }
+        } else {
+            showNotificationToast('Greška pri ažuriranju notifikacije', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to mark notification as read:', error);
+        showNotificationToast('Greška pri ažuriranju notifikacije', 'error');
+    }
+}
+
+// Mark notification as unread
+async function markNotificationAsUnread(notificationId) {
+    try {
+        const response = await fetch('/api/notifikacije/procitaj', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: notificationId, procitana: false })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update local cache
+            const notification = notificationsList.find(n => n.id === notificationId);
+            if (notification) {
+                notification.procitana = false;
+                updateNotificationsDisplay();
+                updateNotificationsStats();
+                showNotificationToast('Notifikacija označena kao nepročitana', 'success');
+            }
+        } else {
+            showNotificationToast('Greška pri ažuriranju notifikacije', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to mark notification as unread:', error);
+        showNotificationToast('Greška pri ažuriranju notifikacije', 'error');
+    }
+}
+
+// Delete single notification
+async function deleteNotification(notificationId) {
+    if (!confirm('Da li ste sigurni da želite da obrišete ovu notifikaciju?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/notifikacije/${notificationId}`, {
             method: 'DELETE'
         });
         
-        if (response.ok) {
-            loadNotifications(); // Reload notifications
-        }
+        const data = await response.json();
         
+        if (data.success) {
+            // Remove from local cache
+            notificationsList = notificationsList.filter(n => n.id !== notificationId);
+            updateNotificationsDisplay();
+            updateNotificationsStats();
+            showNotificationToast('Notifikacija obrisana', 'success');
+        } else {
+            showNotificationToast('Greška pri brisanju notifikacije', 'error');
+        }
     } catch (error) {
-        console.error('Error deleting notification:', error);
+        console.error('Failed to delete notification:', error);
+        showNotificationToast('Greška pri brisanju notifikacije', 'error');
     }
 }
 
-async function clearAllNotifications() {
+// Mark all notifications as read
+async function markAllNotificationsAsRead() {
     try {
-        const response = await fetch(`${API_BASE_URL}/notifikacije/clear`, {
+        const response = await fetch('/api/notifikacije/procitaj-sve', {
             method: 'POST'
         });
         
-        if (response.ok) {
-            loadNotifications(); // Reload notifications
-        }
+        const data = await response.json();
         
+        if (data.success) {
+            // Update local cache
+            notificationsList.forEach(notification => {
+                notification.procitana = true;
+            });
+            updateNotificationsDisplay();
+            updateNotificationsStats();
+            showNotificationToast('Sve notifikacije označene kao pročitane', 'success');
+        } else {
+            showNotificationToast('Greška pri ažuriranju notifikacija', 'error');
+        }
     } catch (error) {
-        console.error('Error clearing all notifications:', error);
+        console.error('Failed to mark all notifications as read:', error);
+        showNotificationToast('Greška pri ažuriranju notifikacija', 'error');
     }
 }
 
-async function checkNewNotifications() {
+// Clear read notifications
+async function clearReadNotifications() {
+    const readCount = notificationsList.filter(n => n.procitana).length;
+    
+    if (readCount === 0) {
+        showNotificationToast('Nema pročitanih notifikacija za brisanje', 'info');
+        return;
+    }
+    
+    if (!confirm(`Da li ste sigurni da želite da obrišete ${readCount} pročitanih notifikacija?`)) {
+        return;
+    }
+    
     try {
-        const response = await fetch(`${API_BASE_URL}/notifikacije`);
-        const notifications = await response.json();
+        const response = await fetch('/api/notifikacije/obrisi-procitane', {
+            method: 'DELETE'
+        });
         
-        const unacknowledgedCount = notifications.filter(n => !n.acknowledged).length;
+        const data = await response.json();
         
-        // Check if there are new notifications
-        if (unacknowledgedCount > lastNotificationCount) {
-            const newNotifications = notifications.filter(n => !n.acknowledged).slice(0, unacknowledgedCount - lastNotificationCount);
-            
-            // Show toast for newest notification
-            if (newNotifications.length > 0) {
-                const newest = newNotifications[0];
-                showNotificationToast(newest.severity, newest.message);
-            }
+        if (data.success) {
+            // Update local cache
+            notificationsList = notificationsList.filter(n => !n.procitana);
+            updateNotificationsDisplay();
+            updateNotificationsStats();
+            showNotificationToast(`Obrisano ${readCount} pročitanih notifikacija`, 'success');
+        } else {
+            showNotificationToast('Greška pri brisanju notifikacija', 'error');
         }
-        
-        lastNotificationCount = unacknowledgedCount;
-        updateNotificationBadge(unacknowledgedCount);
-        
     } catch (error) {
-        console.error('Error checking new notifications:', error);
+        console.error('Failed to clear read notifications:', error);
+        showNotificationToast('Greška pri brisanju notifikacija', 'error');
     }
 }
 
-function updateNotificationBadge(count) {
-    const badge = document.getElementById('notification-badge');
-    badge.textContent = count;
-    badge.style.display = count > 0 ? 'flex' : 'none';
+// Clear all notifications
+async function clearAllNotifications() {
+    if (notificationsList.length === 0) {
+        showNotificationToast('Nema notifikacija za brisanje', 'info');
+        return;
+    }
+    
+    if (!confirm(`Da li ste sigurni da želite da obrišete sve (${notificationsList.length}) notifikacije?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/notifikacije/obrisi-sve', {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const deletedCount = notificationsList.length;
+            notificationsList = [];
+            updateNotificationsDisplay();
+            updateNotificationsStats();
+            showNotificationToast(`Obrisano ${deletedCount} notifikacija`, 'success');
+        } else {
+            showNotificationToast('Greška pri brisanju notifikacija', 'error');
+        }
+    } catch (error) {
+        console.error('Failed to clear all notifications:', error);
+        showNotificationToast('Greška pri brisanju notifikacija', 'error');
+    }
 }
 
-function showNotificationToast(severity, message) {
-    const toast = document.getElementById('notification-toast');
-    const icon = toast.querySelector('.toast-icon');
-    const messageElement = toast.querySelector('.toast-message');
-    const closeButton = toast.querySelector('.toast-close');
+// Show notification toast
+function showNotificationToast(message, type = 'info') {
+    // Remove existing toasts
+    const existingToasts = document.querySelectorAll('.notification-toast');
+    existingToasts.forEach(toast => toast.remove());
     
-    // Set content
-    messageElement.textContent = message;
+    const toast = document.createElement('div');
+    toast.className = `notification-toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} toast-icon ${type}"></i>
+            <span>${message}</span>
+        </div>
+    `;
     
-    // Set severity class and icon
-    toast.className = `notification-toast ${severity}`;
-    icon.className = `toast-icon ${severity}`;
-    
-    // Set icon based on severity
-    switch (severity) {
-        case 'critical':
-            icon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
-            break;
-        case 'warning':
-            icon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
-            break;
-        case 'info':
-            icon.innerHTML = '<i class="fas fa-info-circle"></i>';
-            break;
-    }
+    document.body.appendChild(toast);
     
     // Show toast
-    toast.classList.add('show');
+    setTimeout(() => toast.classList.add('show'), 100);
     
-    // Auto hide after 5 seconds
+    // Hide toast after 3 seconds
     setTimeout(() => {
         toast.classList.remove('show');
-    }, 5000);
-    
-    // Close button
-    closeButton.onclick = () => {
-        toast.classList.remove('show');
-    };
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Update notification badge in tab
+function updateNotificationBadge(count) {
+    const notificationsTab = document.querySelector('[onclick="showTab(\'notifications\')"]');
+    if (notificationsTab) {
+        let badge = notificationsTab.querySelector('.badge');
+        
+        if (count > 0) {
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'badge';
+                notificationsTab.appendChild(badge);
+            }
+            badge.textContent = count > 99 ? '99+' : count;
+        } else if (badge) {
+            badge.remove();
+        }
+    }
 }
 
 // CSS for battery levels (injected dynamically)
