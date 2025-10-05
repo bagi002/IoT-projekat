@@ -32,12 +32,4 @@ void publishSensorData(struct mosquitto* mosq, const SensorData& data) {
     if (rc != MOSQ_ERR_SUCCESS) {
         std::cerr << "Greška pri slanju podataka o bateriji: " << mosquitto_strerror(rc) << std::endl;
     }
-
-    // Publish greska ako postoji
-    if (data.hasGreska) {
-        rc = mosquitto_publish(mosq, NULL, SENZOR_GRESKA, data.greska.length(), data.greska.c_str(), 0, false);
-        if (rc != MOSQ_ERR_SUCCESS) {
-            std::cerr << "Greška pri slanju podataka o grešci: " << mosquitto_strerror(rc) << std::endl;
-        }
-    }
 }

@@ -7,8 +7,6 @@ struct SensorData {
     double temperatura;
     double vlaznost;
     int baterija;
-    bool hasGreska;
-    std::string greska;
 };
 
 // Function declarations

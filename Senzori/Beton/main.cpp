@@ -67,11 +67,6 @@ int main() {
                 std::cout << "  Temperatura: " << sensorData.temperatura << "°C" << std::endl;
                 std::cout << "  Vlaznost: " << sensorData.vlaznost << "%" << std::endl;
                 std::cout << "  Baterija: " << sensorData.baterija << "%" << std::endl;
-                if (sensorData.hasGreska) {
-                    std::cout << "  Greska: " << sensorData.greska << std::endl;
-                } else {
-                    std::cout << "  Greska: nema" << std::endl;
-                }
                 std::cout << "---" << std::endl;
             }   
            

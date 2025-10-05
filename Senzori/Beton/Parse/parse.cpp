@@ -37,21 +37,6 @@ SensorData parseJsonData(const std::string& jsonStr) {
         }
     }
     
-    // Parsiranje greske
-    size_t greskaPos = jsonStr.find("\"greska\":");
-    if (greskaPos != std::string::npos) {
-        if (jsonStr.find("null", greskaPos) != std::string::npos) {
-            data.hasGreska = false;
-        } else {
-            data.hasGreska = true;
-            size_t start = jsonStr.find("\"", greskaPos + 8);
-            size_t end = jsonStr.find("\"", start + 1);
-            if (start != std::string::npos && end != std::string::npos) {
-                data.greska = jsonStr.substr(start + 1, end - start - 1);
-            }
-        }
-    }
-    
     return data;
 }
 
