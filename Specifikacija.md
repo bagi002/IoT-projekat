@@ -138,36 +138,14 @@
 - `GET /api/grijac/stanje`  
   Odgovor: `{"aktivan": false, "temperatura": 45.2, "baterija": 65, "greska": null}`
 
-**Sistem:**
-- `GET /api/sistem/stanje`  
-  Odgovor: `{"pumpa_radi": true, "grijac_radi": false, "senzori_online": 4}`
-
-#### POST zahtevi - Upravljanje
-
-**Pumpa:**
-- `POST /api/pumpa/upravljanje`  
-  Tijelo: `{"akcija": "pokreni", "trajanje": 300}`  
-  Odgovor: `{"uspjeh": true, "poruka": "Pumpa pokrenuta na 300 sekundi"}`
-
-- `POST /api/pumpa/upravljanje`  
-  Tijelo: `{"akcija": "zaustavi"}`  
-  Odgovor: `{"uspjeh": true, "poruka": "Pumpa zaustavljena"}`
-
-**Grijač:**
-- `POST /api/grijac/upravljanje`  
-  Tijelo: `{"akcija": "pokreni", "ciljna_temperatura": 50}`  
-  Odgovor: `{"uspjeh": true, "poruka": "Grijač pokrenut, ciljna temperatura 50°C"}`
-
-- `POST /api/grijac/upravljanje`  
-  Tijelo: `{"akcija": "zaustavi"}`  
-  Odgovor: `{"uspjeh": true, "poruka": "Grijač zaustavljen"}`
-
 #### Greške i upozorenja
 - `GET /api/greske`  
   Odgovor: `[{"uredjaj": "pumpa", "tip": "niska_baterija", "vreme": "2024-01-15T10:30:00Z"}]`
+  ## Pokriti vise gresaka jos par ali svaka ima isti json obrazac uredjaj koji je triger , naziv tip greske - upozorenja 
+  i vremme
+  pokriti na primer: niska vlaznost, pad temeprature vazduha u minus i sl ...
 
-- `GET /api/baterije`  
-  Odgovor: `{"beton_senzor": 85, "povrsina_senzor": 92, "pumpa": 78, "grijac": 65}`
+
 
 ---
 
