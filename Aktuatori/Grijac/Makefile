@@ -7,7 +7,7 @@ LDFLAGS = -lmosquitto
 TARGET = grejac
 
 # Source files
-SOURCES = main.cpp MQTT/mqtt.cpp Parse/parse.cpp
+SOURCES = main.cpp MQTT/mqtt.cpp Parse/parse.cpp ../common/file_mutex.cpp
 
 # Object files
 OBJECTS = $(SOURCES:.cpp=.o)
