@@ -24,9 +24,6 @@ int main() {
     struct mosquitto* mosq = NULL;
     int rc;
 
-    // Inicijalizuj početne vrednosti u JSON fajlu
-    writeGrejacJsonToFile(currentActuatorData);
-
     // 1. Inicijalizacija biblioteke
     mosquitto_lib_init();
 
