@@ -225,50 +225,104 @@ def get_dashboard_data():
 @app.route('/api/senzori/beton', methods=['GET'])
 def get_beton_sensor():
     """Get concrete sensor data"""
-    return jsonify(current_data['beton_sensor'])
+    data = current_data['beton_sensor']
+    return jsonify({
+        'temperatura': data['temperature'],
+        'vlaznost': data['humidity'],
+        'baterija': data['battery'],
+        'greska': None if data['status'] == 'online' else 'offline'
+    })
+
+@app.route('/api/senzori/povrsina', methods=['GET'])
+def get_povrsina_sensor():
+    """Get surface/air sensor data"""
+    data = current_data['vazduh_sensor']
+    return jsonify({
+        'temperatura': data['temperature'],
+        'vlaznost': data['humidity'],
+        'baterija': data['battery'],
+        'greska': None if data['status'] == 'online' else 'offline'
+    })
 
 @app.route('/api/senzori/vazduh', methods=['GET'])
 def get_vazduh_sensor():
-    """Get air sensor data"""
-    return jsonify(current_data['vazduh_sensor'])
+    """Get air sensor data (alias for compatibility)"""
+    return get_povrsina_sensor()
 
 @app.route('/api/pumpa/stanje', methods=['GET'])
 def get_pumpa_status():
     """Get pump status"""
-    return jsonify(current_data['pumpa'])
+    data = current_data['pumpa']
+    return jsonify({
+        'aktivna': data['active'],
+        'baterija': data['battery'],
+        'greska': None if data['status'] == 'online' else 'offline'
+    })
 
 @app.route('/api/grijac/stanje', methods=['GET'])
 def get_grijac_status():
     """Get heater status"""
-    return jsonify(current_data['grijac'])
+    data = current_data['grijac']
+    return jsonify({
+        'aktivan': data['active'],
+        'temperatura': data['temperature'],
+        'baterija': data['battery'],
+        'greska': None if data['status'] == 'online' else 'offline'
+    })
 
-@app.route('/api/pumpa/upravljanje', methods=['POST'])
-def control_pumpa():
-    """Control pump"""
+@app.route('/api/greska', methods=['POST'])
+def report_error():
+    """Receive error reports from controller"""
     data = request.json
-    action = data.get('akcija')
+    if not isinstance(data, list):
+        data = [data]  # Convert single error to list
     
-    if action == 'pokreni':
-        duration = data.get('trajanje', 300)
-        current_data['pumpa']['active'] = True
-        current_data['pumpa']['remaining_time'] = duration
-        
-        # Auto stop after duration
-        def stop_pump():
-            time.sleep(duration)
-            current_data['pumpa']['active'] = False
-            current_data['pumpa']['remaining_time'] = 0
-        
-        threading.Thread(target=stop_pump, daemon=True).start()
-        
-        return jsonify({'uspjeh': True, 'poruka': f'Pumpa pokrenuta na {duration} sekundi'})
+    conn = sqlite3.connect('iot_data.db')
+    cursor = conn.cursor()
     
-    elif action == 'zaustavi':
-        current_data['pumpa']['active'] = False
-        current_data['pumpa']['remaining_time'] = 0
-        return jsonify({'uspjeh': True, 'poruka': 'Pumpa zaustavljena'})
+    for error in data:
+        uredjaj = error.get('uredjaj', 'nepoznat')
+        tip = error.get('tip', 'greska')
+        vreme = error.get('vreme', datetime.now().isoformat())
+        
+        # Map error type to severity
+        severity_map = {
+            'niska_baterija': 'warning',
+            'niska_vlaznost': 'critical',
+            'visoka_temperatura': 'critical', 
+            'niska_temperatura': 'critical',
+            'greska_senzora': 'warning',
+            'prekid_komunikacije': 'warning',
+            'kritična_temperatura_grijaca': 'critical',
+            'system_maintenance': 'info'
+        }
+        
+        severity = severity_map.get(tip, 'warning')
+        
+        # Create appropriate message
+        message_templates = {
+            'niska_baterija': f'Niska baterija na {uredjaj}',
+            'niska_vlaznost': f'Kritično niska vlažnost na {uredjaj}',
+            'visoka_temperatura': f'Kritično visoka temperatura na {uredjaj}',
+            'niska_temperatura': f'Kritično niska temperatura na {uredjaj}',
+            'greska_senzora': f'Greška senzora: {uredjaj}',
+            'prekid_komunikacije': f'Prekid komunikacije sa {uredjaj}',
+            'kritična_temperatura_grijaca': f'Kritična temperatura grijača: {uredjaj}',
+            'system_maintenance': f'Potrebno održavanje: {uredjaj}'
+        }
+        
+        message = message_templates.get(tip, f'Greška na {uredjaj}: {tip}')
+        
+        cursor.execute('''
+            INSERT INTO notifications (type, message, severity, acknowledged, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (tip, message, severity, False, vreme))
     
-    return jsonify({'uspjeh': False, 'poruka': 'Nepoznata akcija'})
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'status': 'success', 'received': len(data)})
+@app.route('/api/istorija', methods=['GET'])
 
 @app.route('/api/grijac/upravljanje', methods=['POST'])
 def control_grijac():
@@ -363,6 +417,38 @@ def acknowledge_notification(notification_id):
         SET acknowledged = TRUE
         WHERE id = ?
     ''', (notification_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'uspjeh': True})
+
+@app.route('/api/notifikacije/<int:notification_id>', methods=['DELETE'])
+def delete_notification(notification_id):
+    """Delete a notification"""
+    conn = sqlite3.connect('iot_data.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        DELETE FROM notifications
+        WHERE id = ?
+    ''', (notification_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'uspjeh': True})
+
+@app.route('/api/notifikacije/clear', methods=['POST'])
+def clear_all_notifications():
+    """Clear all acknowledged notifications"""
+    conn = sqlite3.connect('iot_data.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        DELETE FROM notifications
+        WHERE acknowledged = TRUE
+    ''')
     
     conn.commit()
     conn.close()

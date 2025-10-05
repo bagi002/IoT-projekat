@@ -52,14 +52,6 @@ function showTab(tabName) {
 
 // Initialize event listeners
 function initializeEventListeners() {
-    // Pump controls
-    document.getElementById('start-pump').addEventListener('click', startPump);
-    document.getElementById('stop-pump').addEventListener('click', stopPump);
-    
-    // Heater controls
-    document.getElementById('start-heater').addEventListener('click', startHeater);
-    document.getElementById('stop-heater').addEventListener('click', stopHeater);
-    
     // History controls
     document.getElementById('refresh-charts').addEventListener('click', loadHistoryData);
     document.getElementById('time-range').addEventListener('change', loadHistoryData);
@@ -100,10 +92,28 @@ function startDataRefresh() {
 // Dashboard data loading
 async function loadDashboardData() {
     try {
-        const response = await fetch(`${API_BASE_URL}/dashboard`);
-        const data = await response.json();
+        // Load data from individual endpoints
+        const [betonResponse, povrsinaResponse, pumpaResponse, grijacResponse] = await Promise.all([
+            fetch(`${API_BASE_URL}/senzori/beton`),
+            fetch(`${API_BASE_URL}/senzori/povrsina`),
+            fetch(`${API_BASE_URL}/pumpa/stanje`),
+            fetch(`${API_BASE_URL}/grijac/stanje`)
+        ]);
+
+        // Check for timeouts (simulate 1min timeout with 5 second timeout for demo)
+        const timeout = 5000; // 5 seconds for demo, should be 60000 for 1 minute
         
-        updateDashboard(data);
+        const betonData = betonResponse.ok ? await betonResponse.json() : null;
+        const povrsinaData = povrsinaResponse.ok ? await povrsinaResponse.json() : null;
+        const pumpaData = pumpaResponse.ok ? await pumpaResponse.json() : null;
+        const grijacData = grijacResponse.ok ? await grijacResponse.json() : null;
+
+        updateDashboard({
+            beton_sensor: betonData,
+            povrsina_sensor: povrsinaData,
+            pumpa: pumpaData,
+            grijac: grijacData
+        });
         
         // Update connection status
         document.getElementById('connection-status').textContent = '● Online';
@@ -120,39 +130,65 @@ async function loadDashboardData() {
 
 function updateDashboard(data) {
     // Update Beton Sensor
-    updateSensorCard('beton', data.beton_sensor);
+    if (data.beton_sensor) {
+        updateSensorCard('beton', data.beton_sensor);
+    } else {
+        setSensorOffline('beton');
+    }
     
-    // Update Vazduh Sensor
-    updateSensorCard('vazduh', data.vazduh_sensor);
+    // Update Povrsina/Vazduh Sensor  
+    if (data.povrsina_sensor) {
+        updateSensorCard('vazduh', data.povrsina_sensor);
+    } else {
+        setSensorOffline('vazduh');
+    }
     
     // Update Pumpa
-    updateActuatorCard('pumpa', data.pumpa);
+    if (data.pumpa) {
+        updateActuatorCard('pumpa', data.pumpa);
+    } else {
+        setActuatorOffline('pumpa');
+    }
     
     // Update Grijač
-    updateActuatorCard('grijac', data.grijac);
+    if (data.grijac) {
+        updateActuatorCard('grijac', data.grijac);
+    } else {
+        setActuatorOffline('grijac');
+    }
 }
 
 function updateSensorCard(sensorType, sensorData) {
     const prefix = sensorType;
     
     // Temperature
-    document.getElementById(`${prefix}-temp`).textContent = `${sensorData.temperature.toFixed(1)}°C`;
+    document.getElementById(`${prefix}-temp`).textContent = `${sensorData.temperatura.toFixed(1)}°C`;
     
     // Humidity
-    document.getElementById(`${prefix}-humidity`).textContent = `${sensorData.humidity.toFixed(1)}%`;
+    document.getElementById(`${prefix}-humidity`).textContent = `${sensorData.vlaznost.toFixed(1)}%`;
     
     // Battery
-    const batteryLevel = sensorData.battery;
+    const batteryLevel = sensorData.baterija;
     document.getElementById(`${prefix}-battery`).textContent = `${batteryLevel}%`;
     updateBatteryLevel(`${prefix}-battery-level`, batteryLevel);
     
     // Status
     const statusElement = document.getElementById(`${prefix}-status`);
-    if (sensorData.status === 'online') {
+    if (sensorData.greska === null) {
         statusElement.className = 'status-indicator online';
     } else {
         statusElement.className = 'status-indicator offline';
     }
+}
+
+function setSensorOffline(sensorType) {
+    const prefix = sensorType;
+    
+    document.getElementById(`${prefix}-temp`).textContent = '--°C';
+    document.getElementById(`${prefix}-humidity`).textContent = '--%';
+    document.getElementById(`${prefix}-battery`).textContent = '--%';
+    document.getElementById(`${prefix}-status`).className = 'status-indicator offline';
+    updateBatteryLevel(`${prefix}-battery-level`, 0);
 }
 
 function updateActuatorCard(actuatorType, actuatorData) {
@@ -160,75 +196,67 @@ function updateActuatorCard(actuatorType, actuatorData) {
     
     // Status
     const activeElement = document.getElementById(`${prefix}-active`);
-    if (actuatorData.active) {
-        activeElement.textContent = 'Aktivna';
+    let isActive = false;
+    
+    if (actuatorType === 'pumpa') {
+        isActive = actuatorData.aktivna;
+    } else if (actuatorType === 'grijac') {
+        isActive = actuatorData.aktivan;
+    }
+    
+    if (isActive) {
+        activeElement.textContent = actuatorType === 'pumpa' ? 'Aktivna' : 'Aktivan';
         activeElement.className = 'status-text active';
     } else {
-        activeElement.textContent = 'Neaktivna';
+        activeElement.textContent = actuatorType === 'pumpa' ? 'Neaktivna' : 'Neaktivan';
         activeElement.className = 'status-text inactive';
     }
     
     // Battery
-    const batteryLevel = actuatorData.battery;
+    const batteryLevel = actuatorData.baterija;
     document.getElementById(`${prefix}-battery`).textContent = `${batteryLevel}%`;
     updateBatteryLevel(`${prefix}-battery-level`, batteryLevel);
     
     // Status indicator
     const statusElement = document.getElementById(`${prefix}-status`);
-    if (actuatorData.status === 'online') {
+    if (actuatorData.greska === null) {
         statusElement.className = 'status-indicator online';
     } else {
         statusElement.className = 'status-indicator offline';
     }
     
-    // Update control card status
-    updateControlCardStatus(actuatorType, actuatorData);
-    
     // Specific data
-    if (actuatorType === 'pumpa' && actuatorData.remaining_time) {
-        document.getElementById('pumpa-time').textContent = `${actuatorData.remaining_time}s`;
-    } else if (actuatorType === 'pumpa') {
+    if (actuatorType === 'pumpa') {
+        // For pump, we'll show remaining time if available (not in new API, but keep for compatibility)
         document.getElementById('pumpa-time').textContent = '0s';
     }
     
-    if (actuatorType === 'grijac' && actuatorData.temperature) {
-        document.getElementById('grijac-temp').textContent = `${actuatorData.temperature.toFixed(1)}°C`;
+    if (actuatorType === 'grijac' && actuatorData.temperatura) {
+        document.getElementById('grijac-temp').textContent = `${actuatorData.temperatura.toFixed(1)}°C`;
+    }
+}
+
+function setActuatorOffline(actuatorType) {
+    const prefix = actuatorType;
+    
+    const activeElement = document.getElementById(`${prefix}-active`);
+    activeElement.textContent = actuatorType === 'pumpa' ? 'Neaktivna' : 'Neaktivan';
+    activeElement.className = 'status-text offline';
+    
+    document.getElementById(`${prefix}-battery`).textContent = '--%';
+    document.getElementById(`${prefix}-status`).className = 'status-indicator offline';
+    updateBatteryLevel(`${prefix}-battery-level`, 0);
+    
+    if (actuatorType === 'pumpa') {
+        document.getElementById('pumpa-time').textContent = '0s';
+    } else if (actuatorType === 'grijac') {
+        document.getElementById('grijac-temp').textContent = '--°C';
     }
 }
 
 function updateControlCardStatus(actuatorType, actuatorData) {
-    let statusElementId, statusText;
-    
-    if (actuatorType === 'pumpa') {
-        statusElementId = 'pump-control-status';
-        statusText = actuatorData.active ? 'Pumpa radi' : 'Neaktivna';
-    } else if (actuatorType === 'grijac') {
-        statusElementId = 'heater-control-status';
-        statusText = actuatorData.active ? 'Grijač radi' : 'Neaktivan';
-    }
-    
-    const statusElement = document.getElementById(statusElementId);
-    if (statusElement) {
-        const statusDot = statusElement.querySelector('.status-dot');
-        const statusTextElement = statusElement.querySelector('.status-text');
-        
-        if (statusDot && statusTextElement) {
-            // Update status dot
-            statusDot.className = 'status-dot';
-            if (actuatorData.status === 'online') {
-                if (actuatorData.active) {
-                    statusDot.classList.add('active');
-                } else {
-                    statusDot.classList.add('online');
-                }
-            } else {
-                statusDot.classList.add('offline');
-            }
-            
-            // Update status text
-            statusTextElement.textContent = statusText;
-        }
-    }
+    // This function is no longer needed since we removed manual control cards
+    // Keeping it for compatibility but it doesn't do anything
 }
 
 function updateBatteryLevel(elementId, batteryLevel) {
@@ -272,117 +300,6 @@ function updateBatteryLevel(elementId, batteryLevel) {
         batteryText.classList.add(levelClass);
         batteryIcon.classList.add(levelClass);
         batteryIcon.className = `battery-icon ${iconClass} ${levelClass}`;
-    }
-}
-
-// Control functions
-async function startPump() {
-    const duration = parseInt(document.getElementById('pump-duration').value) || 300;
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/pumpa/upravljanje`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                akcija: 'pokreni',
-                trajanje: duration
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.uspjeh) {
-            showNotificationToast('info', result.poruka);
-        } else {
-            showNotificationToast('warning', result.poruka);
-        }
-        
-    } catch (error) {
-        console.error('Error starting pump:', error);
-        showNotificationToast('critical', 'Greška pri pokretanju pumpe');
-    }
-}
-
-async function stopPump() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/pumpa/upravljanje`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                akcija: 'zaustavi'
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.uspjeh) {
-            showNotificationToast('info', result.poruka);
-        } else {
-            showNotificationToast('warning', result.poruka);
-        }
-        
-    } catch (error) {
-        console.error('Error stopping pump:', error);
-        showNotificationToast('critical', 'Greška pri zaustavljanju pumpe');
-    }
-}
-
-async function startHeater() {
-    const targetTemp = parseInt(document.getElementById('heater-temp').value) || 50;
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/grijac/upravljanje`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                akcija: 'pokreni',
-                ciljna_temperatura: targetTemp
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.uspjeh) {
-            showNotificationToast('info', result.poruka);
-        } else {
-            showNotificationToast('warning', result.poruka);
-        }
-        
-    } catch (error) {
-        console.error('Error starting heater:', error);
-        showNotificationToast('critical', 'Greška pri pokretanju grijača');
-    }
-}
-
-async function stopHeater() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/grijac/upravljanje`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                akcija: 'zaustavi'
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.uspjeh) {
-            showNotificationToast('info', result.poruka);
-        } else {
-            showNotificationToast('warning', result.poruka);
-        }
-        
-    } catch (error) {
-        console.error('Error stopping heater:', error);
-        showNotificationToast('critical', 'Greška pri zaustavljanju grijača');
     }
 }
 
@@ -658,6 +575,9 @@ function createNotificationElement(notification) {
             ${!notification.acknowledged ? `<button class="btn btn-secondary" onclick="acknowledgeNotification(${notification.id})">
                 <i class="fas fa-check"></i> Potvrdi
             </button>` : '<span style="color: #27ae60;"><i class="fas fa-check"></i> Potvrđeno</span>'}
+            <button class="btn btn-danger" onclick="deleteNotification(${notification.id})" title="Obriši notifikaciju">
+                <i class="fas fa-trash"></i>
+            </button>
         </div>
     `;
     
@@ -679,10 +599,34 @@ async function acknowledgeNotification(notificationId) {
     }
 }
 
+async function deleteNotification(notificationId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/notifikacije/${notificationId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            loadNotifications(); // Reload notifications
+        }
+        
+    } catch (error) {
+        console.error('Error deleting notification:', error);
+    }
+}
+
 async function clearAllNotifications() {
-    // This would require a backend endpoint to clear all notifications
-    // For now, just reload
-    loadNotifications();
+    try {
+        const response = await fetch(`${API_BASE_URL}/notifikacije/clear`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            loadNotifications(); // Reload notifications
+        }
+        
+    } catch (error) {
+        console.error('Error clearing all notifications:', error);
+    }
 }
 
 async function checkNewNotifications() {

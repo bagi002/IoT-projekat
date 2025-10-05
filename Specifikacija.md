@@ -139,11 +139,18 @@
   Odgovor: `{"aktivan": false, "temperatura": 45.2, "baterija": 65, "greska": null}`
 
 #### Greške i upozorenja
-- `GET /api/greske`  
+- `POST /api/greska`  
   Odgovor: `[{"uredjaj": "pumpa", "tip": "niska_baterija", "vreme": "2024-01-15T10:30:00Z"}]`
-  ## Pokriti vise gresaka jos par ali svaka ima isti json obrazac uredjaj koji je triger , naziv tip greske - upozorenja 
-  i vremme
-  pokriti na primer: niska vlaznost, pad temeprature vazduha u minus i sl ...
+
+**Tipovi grešaka/upozorenja:**
+- `niska_baterija` - baterija uređaja ispod 20%
+- `niska_vlaznost` - vlažnost betona ispod ciljnih vrijednosti
+- `visoka_temperatura` - temperatura betona iznad maksimalne dozvoljene
+- `niska_temperatura` - temperatura betona ispod minimalne ili temperatura vazduha u minusu
+- `greska_senzora` - greška u radu senzora ili nepravilni podaci
+- `prekid_komunikacije` - gubitak konekcije sa uređajem
+- `kritična_temperatura_grijaca` - grijač pregrijava
+- `system_maintenance` - potrebno održavanje sistema
 
 
 
@@ -158,12 +165,7 @@
 - **Kartica "Grijač"**: status (radi/ne radi), baterija %, trenutna temperatura
 - **Vrijeme od izljevanja betona**: (dani:sati:minuti)
 
-### 🎛️ Manuelno upravljanje
-- **"POKRENI PUMPU"** dugme + polje za unos sekundi (default 300)
-- **"ZAUSTAVI PUMPU"** dugme
-- **"POKRENI GRIJAČ"** dugme
-- **"ZAUSTAVI GRIJAČ"** dugme
-- **"Automatski režim ON/OFF"** prekidač
+
 
 ### 🚨 Alarmi i notifikacije
 - Lista alarma sa bojama (crveno-kritično, žuto-upozorenje, plavo-info)
