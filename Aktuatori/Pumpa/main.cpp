@@ -57,6 +57,22 @@ int main() {
              // 5. Čitanje podataka o bateriji iz BATERIJE.json
             int batteryLevel = readBatteryFromFile();
             
+            // Provera baterije - ako je 0%, prestani sa radom
+            if (batteryLevel <= 0) {
+                std::cout << "\n[KRITIČNO] Baterija pumpe je prazna (0%)!" << std::endl;
+                std::cout << "Pumpa se isključuje..." << std::endl;
+                
+                // Pošalji poslednji status sa baterijom 0% i isključenom pumpom
+                ActuatorData actuatorData = currentActuatorData;
+                actuatorData.baterija = 0;
+                actuatorData.aktivan = 0;  // Isključi pumpu
+                actuatorData.vreme_rada = 0;
+                publishActuatorData(mosq, actuatorData);
+                
+                // Zaustavi rad
+                break;
+            }
+            
             if (batteryLevel > 0) {
                 // Ažuriraj podatke o bateriji
                 ActuatorData actuatorData = currentActuatorData;
@@ -77,7 +93,9 @@ int main() {
             
             // Interval ocitavanja podataka
             std::this_thread::sleep_for(std::chrono::seconds(5));
-        }  
+        }
+        
+        std::cout << "Pumpa potpuno isključena zbog prazne baterije." << std::endl;
     });
 
     if(publish_thread.joinable()) {
