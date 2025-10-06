@@ -4,6 +4,8 @@ import sqlite3
 import requests
 import threading
 import time
+import json
+import os
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -20,8 +22,82 @@ device_status = {
     'grijac': {'active': False, 'last_update': None, 'data': None}
 }
 
+# Tracker za poslednje snimanje podataka (za 10-minutni interval)
+last_sensor_save = {
+    'beton_senzor': None,
+    'povrsina_senzor': None
+}
+
+# Simulovano vreme funkcije
+def get_sim_time_path():
+    """Vraća apsolutni put do time.json fajla"""
+    # Idemo iz backend direktorijuma do root-a projekta (Aplikacija/backend -> IoT projekat)
+    backend_dir = os.path.dirname(os.path.abspath(__file__))  # /home/bagi/Desktop/IoT projekat/Aplikacija/backend
+    aplikacija_dir = os.path.dirname(backend_dir)  # /home/bagi/Desktop/IoT projekat/Aplikacija
+    project_root = os.path.dirname(aplikacija_dir)  # /home/bagi/Desktop/IoT projekat
+    time_path = os.path.join(project_root, 'SimData', 'time.json')
+    print(f"🔍 [DEBUG] Looking for time.json at: {time_path}")
+    print(f"🔍 [DEBUG] File exists: {os.path.exists(time_path)}")
+    return time_path
+
+def read_sim_time():
+    """Čita simulovano vreme iz SimData/time.json"""
+    try:
+        time_path = get_sim_time_path()
+        
+        # Proverava da li fajl postoji
+        if not os.path.exists(time_path):
+            print(f"❌ [ERROR] Time file does not exist: {time_path}")
+            return datetime.now()
+        
+        print(f"📖 [DEBUG] Reading time from: {time_path}")
+        with open(time_path, 'r', encoding='utf-8') as f:
+            time_data = json.load(f)
+        
+        print(f"📅 [DEBUG] Loaded time data: {time_data}")
+        
+        # Kombina datum i vreme u datetime objekat
+        date_str = time_data['date']
+        time_str = time_data['time']
+        datetime_str = f"{date_str} {time_str}"
+        print(f"🕐 [DEBUG] Parsing datetime: {datetime_str}")
+        sim_datetime = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S')
+        
+        print(f"✅ [SUCCESS] Sim time parsed: {sim_datetime}")
+        return sim_datetime
+    except Exception as e:
+        print(f"⚠️ [WARNING] Could not read sim time: {e}, using system time")
+        return datetime.now()
+
+def get_current_sim_time():
+    """Vraća trenutno simulovano vreme"""
+    return read_sim_time()
+
+def format_sim_time_iso(sim_time=None):
+    """Formatira simulovano vreme u ISO format"""
+    if sim_time is None:
+        sim_time = get_current_sim_time()
+    return sim_time.isoformat() + 'Z'
+
+def should_save_sensor_data(device_type):
+    """Proverava da li je vreme za novo snimanje podataka (svakih 10 minuta simulovano vreme)"""
+    current_sim_time = get_current_sim_time()
+    last_save = last_sensor_save.get(device_type)
+    
+    if last_save is None:
+        print(f"📝 [SAVE_CHECK] First save for {device_type}")
+        return True
+    
+    time_diff = current_sim_time - last_save
+    minutes_diff = time_diff.total_seconds() / 60
+    
+    print(f"📝 [SAVE_CHECK] {device_type}: {minutes_diff:.1f} minutes since last save")
+    
+    # Čuva svakih 10 minuta ili više
+    return minutes_diff >= 10
+
 def init_db():
-    """Inicijalizacija SQLite baze podataka"""
+    """Inicijalizuje SQLite bazu podataka"""
     conn = sqlite3.connect('iot_data.db')
     cursor = conn.cursor()
     
@@ -46,9 +122,23 @@ def init_db():
             temperatura REAL,
             vlaznost REAL,
             baterija INTEGER,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            timestamp TEXT NOT NULL,
+            sim_time TEXT NOT NULL
         )
     ''')
+    
+    # Migracija - dodaj sim_time kolonu ako ne postoji
+    try:
+        cursor.execute('ALTER TABLE sensor_history ADD COLUMN sim_time TEXT')
+        print("📊 Added sim_time column to sensor_history table")
+    except sqlite3.OperationalError:
+        print("📊 sim_time column already exists in sensor_history table")
+    
+    # Ažuriraj postojeće zapise bez sim_time
+    cursor.execute('UPDATE sensor_history SET sim_time = timestamp WHERE sim_time IS NULL OR sim_time = ""')
+    updated_rows = cursor.rowcount
+    if updated_rows > 0:
+        print(f"📊 Updated {updated_rows} records with sim_time")
     
     conn.commit()
     conn.close()
@@ -74,13 +164,15 @@ def fetch_device_data():
                         data = response.json()
                         device_status[device_name] = {
                             'active': True,
-                            'last_update': datetime.now(),
+                            'last_update': get_current_sim_time(),
                             'data': data
                         }
                         
-                        # Sačuvaj podatke senzora u istoriju
+                        # Sačuvaj podatke senzora u istoriju svakih 10 minuta (simulovano vreme)
                         if device_name in ['beton_senzor', 'povrsina_senzor']:
-                            save_sensor_data(device_name, data)
+                            if should_save_sensor_data(device_name):
+                                save_sensor_data(device_name, data)
+                                last_sensor_save[device_name] = get_current_sim_time()
                         
                         print(f"✅ {device_name}: {data}")
                     else:
@@ -100,7 +192,7 @@ def fetch_device_data():
 def check_device_timeouts():
     """Označava uređaje kao neaktivne ako nisu odgovorili preko 1 minuta"""
     timeout_limit = timedelta(minutes=1)
-    current_time = datetime.now()
+    current_time = get_current_sim_time()
     
     for device_name, status in device_status.items():
         if status['last_update'] is not None:
@@ -110,19 +202,26 @@ def check_device_timeouts():
                 print(f"⏰ {device_name}: Označen kao neaktivan (timeout)")
 
 def save_sensor_data(device_type, data):
-    """Čuva podatke senzora u bazu za istoriju"""
+    """Čuva podatke senzora u bazu za istoriju sa simulovanim vremenom"""
     try:
         conn = sqlite3.connect('iot_data.db')
         cursor = conn.cursor()
         
+        sim_time = get_current_sim_time()
+        sim_time_str = format_sim_time_iso(sim_time)
+        
+        print(f"💾 [SAVE] Saving {device_type} data at sim time: {sim_time_str}")
+        
         cursor.execute('''
-            INSERT INTO sensor_history (device_type, temperatura, vlaznost, baterija)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO sensor_history (device_type, temperatura, vlaznost, baterija, timestamp, sim_time)
+            VALUES (?, ?, ?, ?, ?, ?)
         ''', (
             device_type,
             data.get('temperatura'),
             data.get('vlaznost'),
-            data.get('baterija')
+            data.get('baterija'),
+            sim_time.strftime('%Y-%m-%d %H:%M:%S'),
+            sim_time_str
         ))
         
         conn.commit()
@@ -194,7 +293,7 @@ def report_error():
         
         uredjaj = data.get('uredjaj')
         tip = data.get('tip')
-        vreme = data.get('vreme', datetime.now().isoformat() + 'Z')
+        vreme = data.get('vreme', format_sim_time_iso())
         poruka = data.get('poruka', f'{tip} na uređaju {uredjaj}')
         
         if not uredjaj or not tip:
@@ -420,6 +519,22 @@ def clear_all_notifications():
         print(f"❌ [DEBUG] Error deleting all notifications: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/sim-time', methods=['GET'])
+def get_sim_time():
+    """Vraća trenutno simulovano vreme"""
+    try:
+        sim_time = get_current_sim_time()
+        return jsonify({
+            'success': True,
+            'iso_time': format_sim_time_iso(sim_time),
+            'sim_time': format_sim_time_iso(sim_time),  # Za kompatibilnost
+            'formatted_time': sim_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'date': sim_time.strftime('%Y-%m-%d'),
+            'time': sim_time.strftime('%H:%M:%S')
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/istorija', methods=['GET'])
 def get_history():
     """Vraća istoriju podataka senzora"""
@@ -557,6 +672,63 @@ def frontend():
     </html>
     '''
     return render_template_string(html)
+
+@app.route('/api/sensor-history', methods=['GET'])
+def get_sensor_history():
+    """Vraća istoriju podataka senzora"""
+    try:
+        device_type = request.args.get('device_type')  # 'beton_senzor', 'povrsina_senzor' ili None za sve
+        hours = request.args.get('hours', '24')  # Koliko sati unazad (default 24)
+        limit = request.args.get('limit', '100')  # Maksimalan broj zapisa
+        
+        conn = sqlite3.connect('iot_data.db')
+        cursor = conn.cursor()
+        
+        # Bazni upit
+        query = '''
+            SELECT id, device_type, temperatura, vlaznost, baterija, timestamp, sim_time
+            FROM sensor_history
+        '''
+        params = []
+        
+        # Filter po device_type
+        if device_type:
+            query += ' WHERE device_type = ?'
+            params.append(device_type)
+        
+        # Sortiraj po vremenu (najnoviji prvi)
+        query += ' ORDER BY id DESC'
+        
+        # Limit
+        query += ' LIMIT ?'
+        params.append(int(limit))
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        history = []
+        for row in rows:
+            history.append({
+                'id': row[0],
+                'device_type': row[1],
+                'temperatura': row[2],
+                'vlaznost': row[3],
+                'baterija': row[4],
+                'timestamp': row[5],
+                'sim_time': row[6]
+            })
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'data': history,
+            'count': len(history)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting sensor history: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     init_db()

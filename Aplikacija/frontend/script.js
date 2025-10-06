@@ -2,26 +2,74 @@
 const API_BASE_URL = 'http://localhost:5000/api';
 let temperatureChart, humidityChart;
 let lastNotificationCount = 0;
+let currentSimTime = null;
+
+// Simulated time functions
+async function loadSimTime() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/sim-time`);
+        if (response.ok) {
+            currentSimTime = await response.json();
+            console.log('📅 Loaded sim time:', currentSimTime);
+        } else {
+            console.error('❌ Failed to load sim time:', response.status);
+            currentSimTime = null;
+        }
+    } catch (error) {
+        console.error('❌ Error loading sim time:', error);
+        currentSimTime = null;
+    }
+}
+
+function getCurrentSimTime() {
+    if (currentSimTime) {
+        return new Date(currentSimTime.iso_time);
+    } else {
+        console.warn('⚠️ Sim time not loaded, using system time');
+        return new Date();
+    }
+}
+
+function formatSimTime(format = 'iso') {
+    const simTime = getCurrentSimTime();
+    
+    if (format === 'iso') {
+        return simTime.toISOString();
+    } else if (format === 'local') {
+        return simTime.toLocaleString();
+    } else if (format === 'time') {
+        return simTime.toLocaleTimeString();
+    } else if (format === 'date') {
+        return simTime.toLocaleDateString();
+    }
+    
+    return simTime.toString();
+}
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 IoT Frontend loaded at:', new Date().toISOString());
+    console.log('🚀 IoT Frontend loaded');
     
-    // Check if all required elements exist
-    checkRequiredElements();
-    
-    initializeTabs();
-    initializeCharts();
-    initializeEventListeners();
-    updateCurrentTime();
-    startDataRefresh();
-    
-    // Set initial tab
-    showTab('dashboard');
-    
-    // Initial notification load with debug info
-    console.log('📡 Starting initial notification load...');
-    loadNotifications();
+    // Load sim time first
+    loadSimTime().then(() => {
+        console.log('📅 Sim time loaded:', currentSimTime);
+        
+        // Check if all required elements exist
+        checkRequiredElements();
+        
+        initializeTabs();
+        initializeCharts();
+        initializeEventListeners();
+        updateCurrentTime();
+        startDataRefresh();
+        
+        // Set initial tab
+        showTab('dashboard');
+        
+        // Initial notification load with debug info
+        console.log('📡 Starting initial notification load...');
+        loadNotifications();
+    });
 });
 
 // Check if all required DOM elements exist
@@ -144,7 +192,7 @@ function initializeEventListeners() {
 
 // Time management
 function updateCurrentTime() {
-    const now = new Date();
+    const now = getCurrentSimTime();
     const timeString = now.toLocaleString('sr-RS', {
         year: 'numeric',
         month: '2-digit',
@@ -160,7 +208,10 @@ function updateCurrentTime() {
 function startDataRefresh() {
     console.log('🔄 Starting automatic data refresh...');
     
-    // Update time every second
+    // Update sim time every 30 seconds
+    setInterval(loadSimTime, 30000);
+    
+    // Update time display every second
     setInterval(updateCurrentTime, 1000);
     
     // Update dashboard data every 5 seconds
@@ -660,15 +711,194 @@ async function loadHistoryData() {
     const timeRange = document.getElementById('time-range').value;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/istorija?hours=${timeRange}`);
-        const data = await response.json();
+        console.log('📊 Loading sensor history data...');
         
-        updateCharts(data);
+        // Učitaj podatke za oba senzora
+        const betonResponse = await fetch(`${API_BASE_URL}/sensor-history?device_type=beton_senzor&limit=100`);
+        const vazduhResponse = await fetch(`${API_BASE_URL}/sensor-history?device_type=povrsina_senzor&limit=100`);
+        
+        if (!betonResponse.ok || !vazduhResponse.ok) {
+            throw new Error('Failed to fetch sensor history');
+        }
+        
+        const betonData = await betonResponse.json();
+        const vazduhData = await vazduhResponse.json();
+        
+        console.log('📊 Beton history:', betonData);
+        console.log('📊 Vazduh history:', vazduhData);
+        
+        updateChartsWithSensorHistory(betonData.data || [], vazduhData.data || []);
         
     } catch (error) {
-        console.error('Error loading history data:', error);
+        console.error('❌ Error loading history data:', error);
         showNotificationToast('critical', 'Greška pri učitavanju istorijskih podataka');
     }
+}
+
+function updateChartsWithSensorHistory(betonData, vazduhData) {
+    console.log('📊 Updating charts with sensor history...');
+    
+    // Pripremi podatke za chartove
+    const labels = [];
+    const betonTemp = [];
+    const vazduhTemp = [];
+    const betonHumidity = [];
+    const vazduhHumidity = [];
+    
+    // Kombiniraj i sortiraj podatke po vremenu
+    const allData = [];
+    
+    betonData.forEach(record => {
+        allData.push({
+            time: new Date(record.sim_time),
+            device: 'beton',
+            temperatura: record.temperatura,
+            vlaznost: record.vlaznost
+        });
+    });
+    
+    vazduhData.forEach(record => {
+        allData.push({
+            time: new Date(record.sim_time),
+            device: 'vazduh',
+            temperatura: record.temperatura,
+            vlaznost: record.vlaznost
+        });
+    });
+    
+    // Sortiraj po vremenu
+    allData.sort((a, b) => a.time - b.time);
+    
+    // Uzmi poslednih 20 časova podataka
+    const maxPoints = 20;
+    const limitedData = allData.slice(-maxPoints);
+    
+    // Grupiši po vremenskim intervalima
+    const timeGroups = {};
+    limitedData.forEach(item => {
+        const timeKey = item.time.toISOString().slice(0, 13); // Grupiši po satu
+        if (!timeGroups[timeKey]) {
+            timeGroups[timeKey] = { beton: null, vazduh: null };
+        }
+        timeGroups[timeKey][item.device] = item;
+    });
+    
+    // Kreiraj labels i podatke
+    Object.keys(timeGroups).sort().forEach(timeKey => {
+        const date = new Date(timeKey + ':00:00.000Z');
+        labels.push(date.toLocaleTimeString('sr-RS', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit'
+        }));
+        
+        const group = timeGroups[timeKey];
+        betonTemp.push(group.beton ? group.beton.temperatura : null);
+        vazduhTemp.push(group.vazduh ? group.vazduh.temperatura : null);
+        betonHumidity.push(group.beton ? group.beton.vlaznost : null);
+        vazduhHumidity.push(group.vazduh ? group.vazduh.vlaznost : null);
+    });
+    
+    console.log('📊 Chart data prepared:', { labels: labels.length, betonTemp: betonTemp.length });
+    
+    // Ažuriraj temperature chart
+    if (temperatureChart) {
+        temperatureChart.data.labels = labels;
+        temperatureChart.data.datasets[0].data = betonTemp;
+        temperatureChart.data.datasets[1].data = vazduhTemp;
+        temperatureChart.update();
+    }
+    
+    // Ažuriraj humidity chart
+    if (humidityChart) {
+        humidityChart.data.labels = labels;
+        humidityChart.data.datasets[0].data = betonHumidity;
+        humidityChart.data.datasets[1].data = vazduhHumidity;
+        humidityChart.update();
+    }
+    
+    console.log('📊 Charts updated successfully');
+}
+
+function updateChartsWithSensorHistory(betonHistory, vazduhHistory) {
+    console.log('📊 Updating charts with sensor history...');
+    
+    // Pripremi podatke za chartove
+    const labels = [];
+    const betonTemp = [];
+    const vazduhTemp = [];
+    const betonHumidity = [];
+    const vazduhHumidity = [];
+    
+    // Kombinuj i sortiraj sve podatke po vremenu (najstariji prvi za chart)
+    const allData = [
+        ...betonHistory.map(item => ({...item, source: 'beton'})),
+        ...vazduhHistory.map(item => ({...item, source: 'vazduh'}))
+    ].sort((a, b) => new Date(a.sim_time) - new Date(b.sim_time));
+    
+    // Grupiši po vremenu (round na 10 minuta)
+    const dataByTime = {};
+    
+    allData.forEach(item => {
+        const timeKey = item.timestamp; // Koristi timestamp kao ključ
+        
+        if (!dataByTime[timeKey]) {
+            dataByTime[timeKey] = {
+                time: timeKey,
+                sim_time: item.sim_time,
+                beton_temp: null,
+                beton_humidity: null,
+                vazduh_temp: null,
+                vazduh_humidity: null
+            };
+        }
+        
+        if (item.source === 'beton') {
+            dataByTime[timeKey].beton_temp = item.temperatura;
+            dataByTime[timeKey].beton_humidity = item.vlaznost;
+        } else {
+            dataByTime[timeKey].vazduh_temp = item.temperatura;
+            dataByTime[timeKey].vazduh_humidity = item.vlaznost;
+        }
+    });
+    
+    // Konvertuj u nižove za chartove
+    Object.values(dataByTime)
+        .sort((a, b) => new Date(a.sim_time) - new Date(b.sim_time))
+        .slice(-50) // Uzmi poslednih 50 tačaka
+        .forEach(item => {
+            // Format vreme za prikaz
+            const time = new Date(item.sim_time);
+            const timeLabel = time.toLocaleTimeString('sr-RS', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit'
+            });
+            
+            labels.push(timeLabel);
+            betonTemp.push(item.beton_temp);
+            vazduhTemp.push(item.vazduh_temp);
+            betonHumidity.push(item.beton_humidity);
+            vazduhHumidity.push(item.vazduh_humidity);
+        });
+    
+    console.log('📊 Chart data prepared:', { labels, betonTemp, vazduhTemp });
+    
+    // Ažuriraj temperature chart
+    temperatureChart.data.labels = labels;
+    temperatureChart.data.datasets[0].data = betonTemp;
+    temperatureChart.data.datasets[1].data = vazduhTemp;
+    temperatureChart.update();
+    
+    // Ažuriraj humidity chart  
+    humidityChart.data.labels = labels;
+    humidityChart.data.datasets[0].data = betonHumidity;
+    humidityChart.data.datasets[1].data = vazduhHumidity;
+    humidityChart.update();
+    
+    console.log('✅ Charts updated successfully');
 }
 
 function updateCharts(data) {
@@ -866,7 +1096,7 @@ function getNotificationTypeClass(tip) {
 function formatNotificationTime(timeString) {
     try {
         const date = new Date(timeString);
-        const now = new Date();
+        const now = getCurrentSimTime();
         const diffMs = now - date;
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
