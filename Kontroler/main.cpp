@@ -13,6 +13,15 @@
 
 int main() {
     SystemController controller;
+    
+    // Učitaj simulirano vreme pre povezivanja
+    std::string time_config_path = "/home/radov1c/Desktop/FTN/Letnji/IoT/IoT-projekat/simulacija/SimData/time.json";
+    if(!controller.loadTimeConfig(time_config_path)) {
+        std::cerr << "Upozorenje: Nije moguće učitati time.json. Koristi se sistemsko vreme." << std::endl;
+    } else {
+        std::cout << "Učitan time.json fajl sa putanje: " << time_config_path << std::endl;
+    }
+    
     if(!controller.connect("localhost", MQTT_PORT, MQTT_KEEPALIVE)) {
         std::cerr << "Neuspešno povezivanje na MQTT broker." << std::endl;
         return 1;
@@ -25,6 +34,9 @@ int main() {
 
     // Glavna kontrolna petlja
     while(controller.isConnected()) {
+        // Ažuriraj simulirano vreme (učitaj najnovije vrednosti iz time.json)
+        controller.updateSimulatedTime();
+        
         // Pozovi kontrolni sistem koji analizira stanje i upravlja aktuatorima
         controller.controlSystem();
         
@@ -32,7 +44,7 @@ int main() {
         controller.printStatus();
         
         // Prikaži alarme
-       // controller.printAlarms();
+        controller.printAlarms();
         
         // Pauza između iteracija (npr. 2 sekundi)
         std::this_thread::sleep_for(std::chrono::seconds(2));
