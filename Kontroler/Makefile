@@ -5,7 +5,7 @@ CXXFLAGS = -std=c++11 -Wall -I.
 LDFLAGS = -lmosquitto -lmicrohttpd -lpthread
 
 TARGET = kontroler
-SOURCES = main.cpp MQTT/mqtt.cpp MQTT/SystemController.cpp MQTT/HttpServer.cpp
+SOURCES = main.cpp MQTT/SystemController.cpp MQTT/HttpServer.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 
 all: $(TARGET)
