@@ -4,24 +4,22 @@
 #include <mosquitto.h>
 #include <string>
 #include <iostream>
-#include <mutex>
 #include <chrono>
 #include <fstream>
 #include <cmath>
 #include <vector>
+#include <algorithm>
+
 
 // MQTT topici za pretplatu
 #define BETON_TEMPERATURA   "ploca1/beton/temperatura"
 #define BETON_VLAZNOST      "ploca1/beton/vlaznost"
-#define BETON_GRESKA        "ploca1/beton/greska"
 #define BETON_BATERIJA      "ploca1/beton/baterija"
 #define VAZDUH_TEMPERATURA  "ploca1/povrsina/temperatura"
 #define VAZDUH_VLAZNOST     "ploca1/povrsina/vlaznost"
-#define VAZDUH_GRESKA       "ploca1/povrsina/greska"
 #define VAZDUH_BATERIJA     "ploca1/povrsina/baterija"
 #define PUMPA_GRESKA        "ploca1/vodena_pumpa/ventil/greska"
 #define PUMPA_BATERIJA      "ploca1/vodena_pumpa/baterija"
-#define GREJAC_GRESKA       "ploca1/grejac_vode/greska"
 #define GREJAC_BATERIJA     "ploca1/grejac_vode/baterija"
 
 // MQTT topici za objavljivanje
@@ -64,7 +62,6 @@ struct BetonSensor {
     float temperature = 0.0f;
     float humidity = 0.0f;
     int battery = 100;
-    std::string error = "";
     long long timestamp = 0;
 };
 
@@ -72,25 +69,22 @@ struct AirSensor {
     float temperature = 0.0f;
     float humidity = 0.0f;
     int battery = 100;
-    std::string error = "";
     long long timestamp = 0;
 };
 
 struct Pump {
     int active = PUMP_STATE_OFF;
     int battery = 100;
-    std::string error = "";
-    long long remaining_time = 0;
+    long long remaining_time = 0; // Preostalo vreme rada u MINUTAMA (usklađeno sa simulacijom)
     long long timestamp = 0;
-    long long last_activation = 0;
-    long long last_deactivation = 0;
+    long long last_activation = 0; // Timestamp aktivacije (milisekunde)
+    long long last_deactivation = 0; // Timestamp deaktivacije (milisekunde)
 };
 
 struct Heater {
     int active = HEATER_STATE_OFF;
     double temperature = 0.0;
     int battery = 100;
-    std::string error = "";
     long long timestamp = 0;
 };
 
@@ -99,12 +93,13 @@ struct TimeConfig {
     std::string time;
     int step_minutes;
     long long pour_timestamp; // Vreme izlivanja betona
+    long long simulated_timestamp; // Trenutno simulirano vreme
+    std::string config_filepath; // Putanja do time.json fajla
 };
 
 class SystemController {
 private:
     struct mosquitto* mosq;
-    std::mutex mutex;
     
     BetonSensor betonSensor;
     AirSensor airSensor;
@@ -122,6 +117,8 @@ private:
     void addAlarm(AlarmLevel level, const std::string& message);
     void checkAlarms();
     bool canActivatePump() const;
+    bool parseTimeConfig(const std::string& filepath);
+    long long parseDateTime(const std::string& date, const std::string& time) const;
     
 public:
     SystemController();
@@ -133,12 +130,11 @@ public:
     void disconnect();
     bool isConnected() const;
     
-    bool setPumpState(int active, int duration = 0);
+    bool setPumpState(int active, int duration_minutes = 0);
     bool setHeaterState(int active, double target_temp = 0.0);
     
     bool loadTimeConfig(const std::string& filepath);
-    void simulateTimeStep();
-    void runControlLoop();
+    bool updateSimulatedTime();
     
     void printStatus() const;
     void printAlarms() const;
