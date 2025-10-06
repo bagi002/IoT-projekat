@@ -106,17 +106,18 @@
 | ploca1/beton/temperatura                | Senzor u betonu       | Kontroler     |
 | ploca1/beton/vlaznost                   | Senzor u betonu       | Kontroler     |
 | ploca1/beton/greska                     | Senzor u betonu       | Kontroler     |
-| ploca1/beton/batery                     | Senzor u betonu       | Kontroler     |
+| ploca1/beton/baterija                   | Senzor u betonu       | Kontroler     |
 | ploca1/povrsina/temperatura             | Senzor iznad betona   | Kontroler     |
 | ploca1/povrsina/vlaznost                | Senzor iznad betona   | Kontroler     |
 | ploca1/povrsina/greska                  | Senzor iznad betona   | Kontroler     |
-| ploca1/povrsina/batery                  | Senzor iznad betona   | Kontroler     |
-| ploca1/vodena_pumpa/ventil/state        | Kontroler             | Pumpa za vodu |
-| ploca1/vodena_pumpa/ventil/error        | Pumpa za vodu         | Kontroler     |
-| ploca1/vodena_pumpa/batery              | Pumpa za vodu         | Kontroler     |
-| ploca1/grijac_vode/state                | Kontroler             | Grijač vode   |
-| ploca1/grijac_vode/temperatura          | Grijač vode           | Kontroler     |
-| ploca1/grijac_vode/batery               | Grijač vode           | Kontroler     |
+| ploca1/povrsina/baterija                | Senzor iznad betona   | Kontroler     |
+| ploca1/vodena_pumpa/ventil/stanje       | Kontroler             | Pumpa za vodu |
+| ploca1/vodena_pumpa/ventil/vreme_rada   | Kontroler             | Pumpa za vodu |
+| ploca1/vodena_pumpa/ventil/greska       | Pumpa za vodu         | Kontroler     |
+| ploca1/vodena_pumpa/baterija            | Pumpa za vodu         | Kontroler     |
+| ploca1/grijac_vode/stanje               | Kontroler             | Grijač vode   |
+| ploca1/grijac_vode/temperatura          | Kontroler             | Grijač vode   |
+| ploca1/grijac_vode/baterija             | Grijač vode           | Kontroler     |
 | ploca1/grijac_vode/greska               | Grijač vode           | Kontroler     |
 
 ### 🌐 HTTP Protokol (Kontroler ↔ Aplikacija)
@@ -137,36 +138,21 @@
 - `GET /api/grijac/stanje`  
   Odgovor: `{"aktivan": false, "temperatura": 45.2, "baterija": 65, "greska": null}`
 
-**Sistem:**
-- `GET /api/sistem/stanje`  
-  Odgovor: `{"pumpa_radi": true, "grijac_radi": false, "senzori_online": 4}`
-
-#### POST zahtevi - Upravljanje
-
-**Pumpa:**
-- `POST /api/pumpa/upravljanje`  
-  Tijelo: `{"akcija": "pokreni", "trajanje": 300}`  
-  Odgovor: `{"uspjeh": true, "poruka": "Pumpa pokrenuta na 300 sekundi"}`
-
-- `POST /api/pumpa/upravljanje`  
-  Tijelo: `{"akcija": "zaustavi"}`  
-  Odgovor: `{"uspjeh": true, "poruka": "Pumpa zaustavljena"}`
-
-**Grijač:**
-- `POST /api/grijac/upravljanje`  
-  Tijelo: `{"akcija": "pokreni", "ciljna_temperatura": 50}`  
-  Odgovor: `{"uspjeh": true, "poruka": "Grijač pokrenut, ciljna temperatura 50°C"}`
-
-- `POST /api/grijac/upravljanje`  
-  Tijelo: `{"akcija": "zaustavi"}`  
-  Odgovor: `{"uspjeh": true, "poruka": "Grijač zaustavljen"}`
-
 #### Greške i upozorenja
-- `GET /api/greske`  
+- `POST /api/greska`  
   Odgovor: `[{"uredjaj": "pumpa", "tip": "niska_baterija", "vreme": "2024-01-15T10:30:00Z"}]`
 
-- `GET /api/baterije`  
-  Odgovor: `{"beton_senzor": 85, "povrsina_senzor": 92, "pumpa": 78, "grijac": 65}`
+**Tipovi grešaka/upozorenja:**
+- `niska_baterija` - baterija uređaja ispod 20%
+- `niska_vlaznost` - vlažnost betona ispod ciljnih vrijednosti
+- `visoka_temperatura` - temperatura betona iznad maksimalne dozvoljene
+- `niska_temperatura` - temperatura betona ispod minimalne ili temperatura vazduha u minusu
+- `greska_senzora` - greška u radu senzora ili nepravilni podaci
+- `prekid_komunikacije` - gubitak konekcije sa uređajem
+- `kritična_temperatura_grijaca` - grijač pregrijava
+- `system_maintenance` - potrebno održavanje sistema
+
+
 
 ---
 
@@ -179,12 +165,7 @@
 - **Kartica "Grijač"**: status (radi/ne radi), baterija %, trenutna temperatura
 - **Vrijeme od izljevanja betona**: (dani:sati:minuti)
 
-### 🎛️ Manuelno upravljanje
-- **"POKRENI PUMPU"** dugme + polje za unos sekundi (default 300)
-- **"ZAUSTAVI PUMPU"** dugme
-- **"POKRENI GRIJAČ"** dugme
-- **"ZAUSTAVI GRIJAČ"** dugme
-- **"Automatski režim ON/OFF"** prekidač
+
 
 ### 🚨 Alarmi i notifikacije
 - Lista alarma sa bojama (crveno-kritično, žuto-upozorenje, plavo-info)
