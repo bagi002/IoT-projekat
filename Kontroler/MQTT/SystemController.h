@@ -97,6 +97,12 @@ struct TimeConfig {
     std::string config_filepath; // Putanja do time.json fajla
 };
 
+struct ErrorInfo {
+    std::string device;
+    std::string type;
+    std::string timestamp;
+};
+
 class SystemController {
 private:
     struct mosquitto* mosq;
@@ -138,6 +144,13 @@ public:
     
     void printStatus() const;
     void printAlarms() const;
+    
+    // Getter metode za HTTP API
+    BetonSensor getBetonSensorData() const;
+    AirSensor getAirSensorData() const;
+    Pump getPumpData() const;
+    Heater getHeaterData() const;
+    std::vector<ErrorInfo> getErrors() const;
     
     static void onConnect(struct mosquitto* mosq, void* obj, int result);
     static void onMessage(struct mosquitto* mosq, void* obj, const struct mosquitto_message* message);
