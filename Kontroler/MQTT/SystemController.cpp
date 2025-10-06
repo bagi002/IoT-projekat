@@ -1,5 +1,6 @@
 #include "SystemController.h"
-
+#include <sstream>
+#include <iomanip>
 
 #ifndef DEBUG
 #define DEBUG 1
@@ -161,10 +162,12 @@ bool SystemController::setPumpState(int active, int duration_minutes) {
         return false;
     }
 
+    // Postavi stanje pumpe
+    pump.active = active;
+    
     // Ako je pumpa aktivirana, salje se i vreme rada
     if(active && duration_minutes > 0) {
         rc = mosquitto_publish(mosq, NULL, PUMPA_VREME_RADA, duration_str.size(), duration_str.c_str(), 0, false);
-        pump.active = active;
         if(rc != MOSQ_ERR_SUCCESS) {
             std::cerr << "Greška pri slanju vremena rada pumpe: " << mosquitto_strerror(rc) << std::endl;
             return false;
@@ -366,6 +369,29 @@ void SystemController::controlSystem() {
     
     checkAlarms();
     
+    // Provera baterije aktuatora - ako je 0%, isključi ih
+    if (pump.battery <= 0 && pump.active == PUMP_STATE_ON) {
+        std::cout << "\n[KRITIČNO] Pumpa ostala bez baterije! Isključujem..." << std::endl;
+        setPumpState(PUMP_STATE_OFF, 0);
+        pump.last_deactivation = getCurrentTimestamp();
+        pump.remaining_time = 0;
+        addAlarm(AlarmLevel::CRITICAL, "Pumpa potpuno ispražnjena (0%) - sistem isključen");
+    }
+    
+    if (heater.battery <= 0 && heater.active == HEATER_STATE_ON) {
+        std::cout << "\n[KRITIČNO] Grejač ostao bez baterije! Isključujem..." << std::endl;
+        setHeaterState(HEATER_STATE_OFF, 0);
+        addAlarm(AlarmLevel::CRITICAL, "Grejač potpuno ispražnjen (0%) - sistem isključen");
+    }
+    
+    // Ako su aktuatori bez baterije, ne izvršavaj kontrolu
+    if (pump.battery <= 0 && heater.battery <= 0) {
+        if (DEBUG) {
+            std::cout << "\n[UPOZORENJE] Svi aktuatori bez baterije - kontrola sistema obustavljena" << std::endl;
+        }
+        return;
+    }
+    
     float targetHumidity = getTargetHumidity();
     
     // Provere uslova
@@ -375,15 +401,15 @@ void SystemController::controlSystem() {
     bool needsHeating = betonSensor.temperature < MIN_CONCRETE_TEMP; // Preniska temperatura betona
     bool airTooCold = airSensor.temperature < MIN_AIR_TEMP_FOR_HEATING; // Da li je temperatura vazduha preniska za grejanje
     
-    bool shouldActivatePump = (needsWater || airTooHumid || needsCooling) && canActivatePump();
+    bool shouldActivatePump = (needsWater || airTooHumid || needsCooling) && canActivatePump() && pump.battery > 0;
     
     // Grejač treba da radi ako:
     // 1. Temperatura betona je niska ILI
     // 2. Temperatura vazduha je niska I potrebno je poljevanje
-    bool shouldActivateHeater = needsHeating || (airTooCold && shouldActivatePump);
+    bool shouldActivateHeater = (needsHeating || (airTooCold && shouldActivatePump)) && heater.battery > 0;
     
     // Kontrola grejača
-    if (shouldActivateHeater) {
+    if (shouldActivateHeater && heater.battery > 0) {
         if (heater.active == HEATER_STATE_OFF) {
             double targetTemp = needsHeating ? MIN_CONCRETE_TEMP + 5.0 : 25;
             setHeaterState(HEATER_STATE_ON, targetTemp);
@@ -431,7 +457,7 @@ void SystemController::controlSystem() {
         }
     }
     // Kontrola pumpe - uključivanje po potrebi
-    else if (shouldActivatePump && pump.active == PUMP_STATE_OFF) {
+    else if (shouldActivatePump && pump.active == PUMP_STATE_OFF && pump.battery > 0) {
         int duration = 300; // 5 minuta početno
         if (betonSensor.humidity < targetHumidity) {
             duration = 600; // 10 minuta za veliku razliku
@@ -445,6 +471,7 @@ void SystemController::controlSystem() {
             if (needsCooling) std::cout << "hlađenje ";
             std::cout << std::endl;
             std::cout << "  - Postavljeno vreme rada: " << duration << " min" << std::endl;
+            std::cout << "  - Baterija pumpe: " << pump.battery << "%" << std::endl;
             if (heater.active == HEATER_STATE_ON) {
                 std::cout << "  - Grejač AKTIVAN - voda će biti zagrejana" << std::endl;
             }
@@ -702,4 +729,78 @@ void SystemController::printAlarms() const {
         }
     }
     std::cout << "==================\n" << std::endl;
+}
+
+// Getter metode za HTTP API
+BetonSensor SystemController::getBetonSensorData() const {
+    return betonSensor;
+}
+
+AirSensor SystemController::getAirSensorData() const {
+    return airSensor;
+}
+
+Pump SystemController::getPumpData() const {
+    return pump;
+}
+
+Heater SystemController::getHeaterData() const {
+    return heater;
+}
+
+std::vector<ErrorInfo> SystemController::getErrors() const {
+    std::vector<ErrorInfo> errors;
+    
+    // Konvertuj alarme u ErrorInfo strukturu
+    for (const auto& alarm : alarms) {
+        ErrorInfo error;
+        
+        // Pokušaj da detektuj uređaj iz poruke alarma
+        if (alarm.message.find("betona") != std::string::npos || 
+            alarm.message.find("beton") != std::string::npos) {
+            error.device = "beton_senzor";
+        } else if (alarm.message.find("vazduha") != std::string::npos || 
+                   alarm.message.find("površine") != std::string::npos) {
+            error.device = "povrsina_senzor";
+        } else if (alarm.message.find("pumpe") != std::string::npos) {
+            error.device = "pumpa";
+        } else if (alarm.message.find("grijača") != std::string::npos || 
+                   alarm.message.find("grejača") != std::string::npos) {
+            error.device = "grijac";
+        } else {
+            error.device = "sistem";
+        }
+        
+        // Odredi tip greške
+        if (alarm.message.find("baterija") != std::string::npos || 
+            alarm.message.find("baterije") != std::string::npos) {
+            error.type = "niska_baterija";
+        } else if (alarm.message.find("temperatura") != std::string::npos) {
+            error.type = "temperatura";
+        } else if (alarm.message.find("vlaznost") != std::string::npos || 
+                   alarm.message.find("vlažnost") != std::string::npos) {
+            error.type = "vlaznost";
+        } else if (alarm.message.find("razlika") != std::string::npos) {
+            error.type = "temperaturna_razlika";
+        } else {
+            error.type = "alarm";
+        }
+        
+        // Konvertuj timestamp u ISO 8601 format
+        long long ts = alarm.timestamp;
+        time_t seconds = ts / 1000;
+        int milliseconds = ts % 1000;
+        
+        struct tm* timeinfo = gmtime(&seconds);
+        char buffer[64];
+        strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", timeinfo);
+        
+        std::ostringstream oss;
+        oss << buffer << "." << std::setfill('0') << std::setw(3) << milliseconds << "Z";
+        error.timestamp = oss.str();
+        
+        errors.push_back(error);
+    }
+    
+    return errors;
 }
