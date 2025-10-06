@@ -318,6 +318,7 @@ def mark_notification_read():
 def mark_all_notifications_read():
     """Označava sve notifikacije kao pročitane"""
     try:
+        print(f"📝 [DEBUG] Mark all notifications as read request received")
         conn = sqlite3.connect('iot_data.db')
         cursor = conn.cursor()
         
@@ -331,6 +332,7 @@ def mark_all_notifications_read():
         conn.commit()
         conn.close()
         
+        print(f"✅ [DEBUG] Marked {updated_count} notifications as read")
         return jsonify({
             'success': True, 
             'message': f'Označeno {updated_count} notifikacija kao pročitano',
@@ -338,6 +340,7 @@ def mark_all_notifications_read():
         })
         
     except Exception as e:
+        print(f"❌ [DEBUG] Error marking all notifications as read: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/notifikacije/<int:notification_id>', methods=['DELETE'])
@@ -368,6 +371,7 @@ def delete_notification(notification_id):
 def clear_read_notifications():
     """Briše samo pročitane notifikacije"""
     try:
+        print(f"🗑️ [DEBUG] Clear read notifications request received")
         conn = sqlite3.connect('iot_data.db')
         cursor = conn.cursor()
         
@@ -380,6 +384,7 @@ def clear_read_notifications():
         conn.commit()
         conn.close()
         
+        print(f"✅ [DEBUG] Deleted {deleted_count} read notifications")
         return jsonify({
             'success': True, 
             'message': f'Obrisano {deleted_count} pročitanih notifikacija',
@@ -387,12 +392,14 @@ def clear_read_notifications():
         })
         
     except Exception as e:
+        print(f"❌ [DEBUG] Error deleting read notifications: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/notifikacije/obrisi-sve', methods=['DELETE'])
 def clear_all_notifications():
     """Briše sve notifikacije"""
     try:
+        print(f"🗑️ [DEBUG] Clear all notifications request received")
         conn = sqlite3.connect('iot_data.db')
         cursor = conn.cursor()
         
@@ -402,6 +409,7 @@ def clear_all_notifications():
         conn.commit()
         conn.close()
         
+        print(f"✅ [DEBUG] Deleted {deleted_count} notifications")
         return jsonify({
             'success': True, 
             'message': f'Obrisano {deleted_count} notifikacija',
@@ -409,6 +417,7 @@ def clear_all_notifications():
         })
         
     except Exception as e:
+        print(f"❌ [DEBUG] Error deleting all notifications: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/istorija', methods=['GET'])

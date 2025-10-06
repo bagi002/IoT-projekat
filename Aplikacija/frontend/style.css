@@ -537,6 +537,38 @@ header h1 {
         inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    box-shadow: 
+        0 8px 25px rgba(40, 167, 69, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-success:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 
+        0 15px 35px rgba(40, 167, 69, 0.4),
+        0 0 20px rgba(40, 167, 69, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    color: white;
+    box-shadow: 
+        0 8px 25px rgba(23, 162, 184, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-info:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 
+        0 15px 35px rgba(23, 162, 184, 0.4),
+        0 0 20px rgba(23, 162, 184, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
 /* History Tab */
 .history-controls {
     background: rgba(255, 255, 255, 0.08);
@@ -966,6 +998,16 @@ header h1 {
     font-size: 0.9rem;
 }
 
+.read-status {
+    color: #28a745;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    opacity: 0.8;
+}
+
 /* Notification Toast */
 .notification-toast {
     position: fixed;
@@ -1171,4 +1213,28 @@ header h1 {
 ::selection {
     background: rgba(102, 126, 234, 0.3);
     color: #ffffff;
+}
+
+/* Notification Badge */
+.badge {
+    background: #e74c3c;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    margin-left: 8px;
+    min-width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: none;
+    box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+    animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
 }

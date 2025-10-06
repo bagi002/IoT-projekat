@@ -166,8 +166,8 @@ function startDataRefresh() {
     // Update dashboard data every 5 seconds
     setInterval(loadDashboardData, 5000);
     
-    // Check for new notifications every 10 seconds
-    setInterval(checkNewNotifications, 10000);
+    // Check for new notifications every 2 seconds for real-time updates
+    setInterval(loadNotifications, 2000);
     
     // Initial load with delay to ensure DOM is ready
     setTimeout(() => {
@@ -721,7 +721,6 @@ let notificationsCache = new Map();
 async function loadNotifications() {
     try {
         console.log('📮 Loading notifications from backend...');
-        showNotificationsLoading(true);
         
         const response = await fetch(`${API_BASE_URL}/notifikacije`);
         console.log('📮 Notifications API response status:', response.status);
@@ -734,7 +733,18 @@ async function loadNotifications() {
         console.log('📮 Notifications data received:', data);
         
         if (data.success) {
-            notificationsList = data.notifikacije || [];
+            const newNotifications = data.notifikacije || [];
+            const newCount = newNotifications.length;
+            const previousCount = notificationsList.length;
+            
+            // Check for new notifications
+            if (newCount > previousCount && previousCount > 0) {
+                const newNotificationCount = newCount - previousCount;
+                console.log(`🆕 ${newNotificationCount} new notification(s) received!`);
+                showNotificationToast(`${newNotificationCount} nova notifikacija`, 'info');
+            }
+            
+            notificationsList = newNotifications;
             console.log(`📮 Loaded ${notificationsList.length} notifications`);
             updateNotificationsDisplay();
             updateNotificationsStats();
@@ -745,8 +755,6 @@ async function loadNotifications() {
     } catch (error) {
         console.error('❌ Failed to load notifications:', error);
         showNotificationsError('Greška pri učitavanju notifikacija');
-    } finally {
-        showNotificationsLoading(false);
     }
 }
 
@@ -832,9 +840,7 @@ function createNotificationHTML(notification) {
                     `<button class="btn btn-mark-read" onclick="markNotificationAsRead(${notification.id})">
                         <i class="fas fa-check"></i> Označiti kao pročitano
                     </button>` :
-                    `<button class="btn btn-mark-unread" onclick="markNotificationAsUnread(${notification.id})">
-                        <i class="fas fa-undo"></i> Označiti kao nepročitano
-                    </button>`
+                    `<span class="read-status"><i class="fas fa-check-circle"></i> Pročitana</span>`
                 }
                 <button class="btn btn-delete" onclick="deleteNotification(${notification.id})">
                     <i class="fas fa-trash"></i> Obriši
@@ -921,7 +927,9 @@ function updateNotificationsStats() {
 // Mark notification as read
 async function markNotificationAsRead(notificationId) {
     try {
-        const response = await fetch('/api/notifikacije/procitaj', {
+        console.log('📝 Marking notification as read:', notificationId);
+        
+        const response = await fetch(`${API_BASE_URL}/notifikacije/procitaj`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -929,53 +937,26 @@ async function markNotificationAsRead(notificationId) {
             body: JSON.stringify({ id: notificationId })
         });
         
+        console.log('📝 Mark as read response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('📝 Mark as read response data:', data);
         
         if (data.success) {
-            // Update local cache
-            const notification = notificationsList.find(n => n.id === notificationId);
-            if (notification) {
-                notification.procitana = true;
-                updateNotificationsDisplay();
-                updateNotificationsStats();
-                showNotificationToast('Notifikacija označena kao pročitana', 'success');
-            }
+            console.log('✅ Notification marked as read successfully');
+            // Reload notifications to reflect changes
+            loadNotifications();
+            showNotificationToast('Notifikacija označena kao pročitana', 'success');
         } else {
+            console.error('❌ Failed to mark notification as read:', data.error);
             showNotificationToast('Greška pri ažuriranju notifikacije', 'error');
         }
     } catch (error) {
-        console.error('Failed to mark notification as read:', error);
-        showNotificationToast('Greška pri ažuriranju notifikacije', 'error');
-    }
-}
-
-// Mark notification as unread
-async function markNotificationAsUnread(notificationId) {
-    try {
-        const response = await fetch('/api/notifikacije/procitaj', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ id: notificationId, procitana: false })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // Update local cache
-            const notification = notificationsList.find(n => n.id === notificationId);
-            if (notification) {
-                notification.procitana = false;
-                updateNotificationsDisplay();
-                updateNotificationsStats();
-                showNotificationToast('Notifikacija označena kao nepročitana', 'success');
-            }
-        } else {
-            showNotificationToast('Greška pri ažuriranju notifikacije', 'error');
-        }
-    } catch (error) {
-        console.error('Failed to mark notification as unread:', error);
+        console.error('❌ Error marking notification as read:', error);
         showNotificationToast('Greška pri ažuriranju notifikacije', 'error');
     }
 }
@@ -987,23 +968,32 @@ async function deleteNotification(notificationId) {
     }
     
     try {
-        const response = await fetch(`/api/notifikacije/${notificationId}`, {
+        console.log('🗑️ Deleting notification:', notificationId);
+        
+        const response = await fetch(`${API_BASE_URL}/notifikacije/${notificationId}`, {
             method: 'DELETE'
         });
         
+        console.log('🗑️ Delete notification response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('🗑️ Delete notification response data:', data);
         
         if (data.success) {
-            // Remove from local cache
-            notificationsList = notificationsList.filter(n => n.id !== notificationId);
-            updateNotificationsDisplay();
-            updateNotificationsStats();
+            console.log('✅ Notification deleted successfully');
+            // Reload notifications to reflect changes
+            loadNotifications();
             showNotificationToast('Notifikacija obrisana', 'success');
         } else {
+            console.error('❌ Failed to delete notification:', data.error);
             showNotificationToast('Greška pri brisanju notifikacije', 'error');
         }
     } catch (error) {
-        console.error('Failed to delete notification:', error);
+        console.error('❌ Error deleting notification:', error);
         showNotificationToast('Greška pri brisanju notifikacije', 'error');
     }
 }
@@ -1011,25 +1001,32 @@ async function deleteNotification(notificationId) {
 // Mark all notifications as read
 async function markAllNotificationsAsRead() {
     try {
-        const response = await fetch('/api/notifikacije/procitaj-sve', {
+        console.log('✅ Marking all notifications as read...');
+        
+        const response = await fetch(`${API_BASE_URL}/notifikacije/procitaj-sve`, {
             method: 'POST'
         });
         
+        console.log('✅ Mark all as read response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('✅ Mark all as read response data:', data);
         
         if (data.success) {
-            // Update local cache
-            notificationsList.forEach(notification => {
-                notification.procitana = true;
-            });
-            updateNotificationsDisplay();
-            updateNotificationsStats();
+            console.log('✅ All notifications marked as read successfully');
+            // Reload notifications to reflect changes
+            loadNotifications();
             showNotificationToast('Sve notifikacije označene kao pročitane', 'success');
         } else {
+            console.error('❌ Failed to mark all notifications as read:', data.error);
             showNotificationToast('Greška pri ažuriranju notifikacija', 'error');
         }
     } catch (error) {
-        console.error('Failed to mark all notifications as read:', error);
+        console.error('❌ Error marking all notifications as read:', error);
         showNotificationToast('Greška pri ažuriranju notifikacija', 'error');
     }
 }
@@ -1048,23 +1045,32 @@ async function clearReadNotifications() {
     }
     
     try {
-        const response = await fetch('/api/notifikacije/obrisi-procitane', {
+        console.log('🗑️ Deleting read notifications...');
+        
+        const response = await fetch(`${API_BASE_URL}/notifikacije/obrisi-procitane`, {
             method: 'DELETE'
         });
         
+        console.log('🗑️ Delete read notifications response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('🗑️ Delete read notifications response data:', data);
         
         if (data.success) {
-            // Update local cache
-            notificationsList = notificationsList.filter(n => !n.procitana);
-            updateNotificationsDisplay();
-            updateNotificationsStats();
+            console.log('✅ Read notifications deleted successfully');
+            // Reload notifications to reflect changes
+            loadNotifications();
             showNotificationToast(`Obrisano ${readCount} pročitanih notifikacija`, 'success');
         } else {
+            console.error('❌ Failed to delete read notifications:', data.error);
             showNotificationToast('Greška pri brisanju notifikacija', 'error');
         }
     } catch (error) {
-        console.error('Failed to clear read notifications:', error);
+        console.error('❌ Error deleting read notifications:', error);
         showNotificationToast('Greška pri brisanju notifikacija', 'error');
     }
 }
@@ -1081,23 +1087,33 @@ async function clearAllNotifications() {
     }
     
     try {
-        const response = await fetch('/api/notifikacije/obrisi-sve', {
+        console.log('🗑️ Deleting all notifications...');
+        
+        const response = await fetch(`${API_BASE_URL}/notifikacije/obrisi-sve`, {
             method: 'DELETE'
         });
         
+        console.log('🗑️ Delete all notifications response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('🗑️ Delete all notifications response data:', data);
         
         if (data.success) {
             const deletedCount = notificationsList.length;
-            notificationsList = [];
-            updateNotificationsDisplay();
-            updateNotificationsStats();
+            console.log(`✅ All ${deletedCount} notifications deleted successfully`);
+            // Reload notifications to reflect changes
+            loadNotifications();
             showNotificationToast(`Obrisano ${deletedCount} notifikacija`, 'success');
         } else {
+            console.error('❌ Failed to delete all notifications:', data.error);
             showNotificationToast('Greška pri brisanju notifikacija', 'error');
         }
     } catch (error) {
-        console.error('Failed to clear all notifications:', error);
+        console.error('❌ Error deleting all notifications:', error);
         showNotificationToast('Greška pri brisanju notifikacija', 'error');
     }
 }
@@ -1131,19 +1147,35 @@ function showNotificationToast(message, type = 'info') {
 
 // Update notification badge in tab
 function updateNotificationBadge(count) {
-    const notificationsTab = document.querySelector('[onclick="showTab(\'notifications\')"]');
+    console.log('🔔 Updating notification badge with count:', count);
+    
+    // Try the direct badge element first
+    const badge = document.getElementById('notification-badge');
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'inline-flex';
+        } else {
+            badge.style.display = 'none';
+        }
+        return;
+    }
+    
+    // Fallback to the old method
+    const notificationsTab = document.querySelector('[data-tab="notifications"]');
     if (notificationsTab) {
-        let badge = notificationsTab.querySelector('.badge');
+        let tabBadge = notificationsTab.querySelector('.badge');
         
         if (count > 0) {
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'badge';
-                notificationsTab.appendChild(badge);
+            if (!tabBadge) {
+                tabBadge = document.createElement('span');
+                tabBadge.className = 'badge';
+                notificationsTab.appendChild(tabBadge);
             }
-            badge.textContent = count > 99 ? '99+' : count;
-        } else if (badge) {
-            badge.remove();
+            tabBadge.textContent = count > 99 ? '99+' : count;
+            tabBadge.style.display = 'inline-flex';
+        } else if (tabBadge) {
+            tabBadge.style.display = 'none';
         }
     }
 }
