@@ -62,6 +62,18 @@ int main() {
             // Parsiraj JSON podatke
             SensorData sensorData = parseJsonData(jsonData);
             
+            // Provera baterije - ako je 0%, prestani sa radom
+            if (sensorData.baterija <= 0) {
+                std::cout << "\n[KRITIČNO] Baterija senzora betona je prazna (0%)!" << std::endl;
+                std::cout << "Senzor se isključuje..." << std::endl;
+                
+                // Pošalji poslednji status sa baterijom 0%
+                publishSensorData(mosq, sensorData);
+                
+                // Zaustavi rad
+                break;
+            }
+            
             // Debug flag
             if (DEBUG) {
                 std::cout << "  Temperatura: " << sensorData.temperatura << "°C" << std::endl;
@@ -80,6 +92,8 @@ int main() {
         // Interval ocitavanja podataka
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
+    
+    std::cout << "Senzor betona potpuno isključen zbog prazne baterije." << std::endl;
 
     // 7. Cistenje resursa i završetak
     mosquitto_loop_stop(mosq, true);
