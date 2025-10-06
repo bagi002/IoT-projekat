@@ -7,7 +7,7 @@
 struct ActuatorData {
     int baterija;
     int aktivan;
-    int vreme_rada;
+    int vreme_rada; // Vreme rada u MINUTAMA (usklađeno sa simulacijom)
 };
 
 std::string readJsonFromFile(const std::string& filename);

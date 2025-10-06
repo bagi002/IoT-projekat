@@ -40,7 +40,7 @@ void on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_messag
             std::string payload((char*)message->payload, message->payloadlen);
             std::cout << "Primljena poruka na temi " << message->topic << ": " << payload << std::endl;
             parseDurationMessage(payload);
-            std::cout << "Pumpa vreme rada: " << currentActuatorData.vreme_rada << "s" << std::endl;
+            std::cout << "Pumpa vreme rada: " << currentActuatorData.vreme_rada << " min" << std::endl;
             writePumpJsonToFile(currentActuatorData);
         } else {
             std::cout << "Primljena prazna poruka na temi " << message->topic << std::endl;

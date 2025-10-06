@@ -49,6 +49,7 @@ void parseStateMessage(const std::string& message) {
 }
 
 // Funkcija za parsiranje trajanja aktivnosti pumpe iz kontrolera
+// Očekuje se vreme u MINUTAMA
 void parseDurationMessage(const std::string& message) {
     try {
         currentActuatorData.vreme_rada = std::stoi(message);
@@ -94,17 +95,21 @@ void writePumpJsonToFile(const ActuatorData& data, const std::string& filename) 
             std::string before = existingContent.substr(0, pumpPos);
             std::string after = existingContent.substr(endObj);
             
+            // vreme_rada je već u minutama - direktno koristimo
+            int runtime_minutes = data.vreme_rada;
+            
             // Prepiši fajl sa ažuriranim pump delom
             std::ofstream file(filename);
             if (file.is_open()) {
                 file << before << "\"pump\": {\n";
                 file << "    \"status\": " << data.aktivan << ",\n";
-                file << "    \"runtime_minutes\": " << data.vreme_rada << "\n";
+                file << "    \"runtime_minutes\": " << runtime_minutes << "\n";
                 file << "  }" << after;
                 file.close();
                 
                 if (DEBUG) {
-                    std::cout << "Stanje vodene pumpe zapisano u " << filename << std::endl;
+                    std::cout << "Stanje vodene pumpe zapisano u " << filename 
+                              << " (runtime: " << runtime_minutes << " min)" << std::endl;
                 }
             } else {
                 std::cerr << "Greška pri pisanju u datoteku " << filename << std::endl;
