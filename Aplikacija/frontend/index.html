@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IoT Sistem za Nadzor Betona</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1.6">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -146,72 +146,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Manual Control Cards -->
-            <div class="control-section">
-                <h3 class="section-title"><i class="fas fa-sliders-h"></i> Manuelno Upravljanje</h3>
-                <div class="control-cards-grid">
-                    <!-- Pumpa Control Card -->
-                    <div class="control-card">
-                        <div class="control-card-header">
-                            <h4><i class="fas fa-tint"></i> Upravljanje Pumpom</h4>
-                            <div class="actuator-status" id="pump-control-status">
-                                <span class="status-dot offline"></span>
-                                <span class="status-text">Neaktivna</span>
-                            </div>
-                        </div>
-                        <div class="control-card-body">
-                            <div class="control-parameter">
-                                <label for="pump-duration">
-                                    <i class="fas fa-clock"></i> Trajanje rada
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" id="pump-duration" value="300" min="1" max="1800" class="parameter-input">
-                                    <span class="input-unit">sekundi</span>
-                                </div>
-                            </div>
-                            <div class="control-actions">
-                                <button id="start-pump" class="btn btn-primary btn-control">
-                                    <i class="fas fa-play"></i> Pokreni Pumpu
-                                </button>
-                                <button id="stop-pump" class="btn btn-danger btn-control">
-                                    <i class="fas fa-stop"></i> Zaustavi
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Heater Control Card -->
-                    <div class="control-card">
-                        <div class="control-card-header">
-                            <h4><i class="fas fa-fire"></i> Upravljanje Grijačem</h4>
-                            <div class="actuator-status" id="heater-control-status">
-                                <span class="status-dot offline"></span>
-                                <span class="status-text">Neaktivan</span>
-                            </div>
-                        </div>
-                        <div class="control-card-body">
-                            <div class="control-parameter">
-                                <label for="heater-temp">
-                                    <i class="fas fa-thermometer-three-quarters"></i> Ciljna temperatura
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" id="heater-temp" value="50" min="20" max="80" class="parameter-input">
-                                    <span class="input-unit">°C</span>
-                                </div>
-                            </div>
-                            <div class="control-actions">
-                                <button id="start-heater" class="btn btn-primary btn-control">
-                                    <i class="fas fa-play"></i> Pokreni Grijač
-                                </button>
-                                <button id="stop-heater" class="btn btn-danger btn-control">
-                                    <i class="fas fa-stop"></i> Zaustavi
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- History Tab -->
@@ -249,9 +183,22 @@
         <div id="notifications" class="tab-content">
             <div class="notifications-header">
                 <h3><i class="fas fa-bell"></i> Notifikacije</h3>
-                <button id="clear-all-notifications" class="btn btn-secondary">
-                    <i class="fas fa-trash"></i> Obriši sve
-                </button>
+                <div class="notifications-controls">
+                    <button id="mark-all-read" class="btn btn-info">
+                        <i class="fas fa-check-double"></i> Označi sve kao pročitano
+                    </button>
+                    <button id="clear-read-notifications" class="btn btn-secondary">
+                        <i class="fas fa-trash-alt"></i> Obriši pročitane
+                    </button>
+                    <button id="clear-all-notifications" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Obriši sve
+                    </button>
+                </div>
+            </div>
+            <div class="notifications-stats">
+                <span id="total-notifications" class="stat-item">Ukupno: 0</span>
+                <span id="unread-notifications" class="stat-item">Nepročitane: 0</span>
+                <span id="read-notifications" class="stat-item">Pročitane: 0</span>
             </div>
             <div id="notifications-list" class="notifications-list">
                 <!-- Notifications will be loaded here -->
@@ -267,7 +214,7 @@
             <button class="toast-close">&times;</button>
         </div>
     </div>
-
-    <script src="script.js"></script>
+    
+    <script src="script.js?v=1.6"></script>
 </body>
 </html>
