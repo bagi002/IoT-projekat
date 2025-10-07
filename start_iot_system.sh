@@ -14,6 +14,27 @@ if ! command -v tmux &> /dev/null; then
     exit 1
 fi
 
+# Proveri da li mosquitto postoji
+if ! command -v mosquitto &> /dev/null; then
+    echo "❌ mosquitto nije instaliran. Instalirajte ga sa: sudo apt install mosquitto mosquitto-clients"
+    exit 1
+fi
+
+# Pokreni MQTT broker ako već nije pokrenut
+echo "🔌 Proveravam MQTT broker..."
+if ! pgrep -x "mosquitto" > /dev/null; then
+    echo "▶️  Pokretam Mosquitto MQTT broker..."
+    mosquitto -d -p 1883
+    if [ $? -eq 0 ]; then
+        echo "✅ MQTT broker je uspešno pokrenut na portu 1883"
+    else
+        echo "❌ Greška pri pokretanju MQTT brokera"
+        exit 1
+    fi
+else
+    echo "✅ MQTT broker je već pokrenut"
+fi
+
 # Funkcija za čekanje da se komponenta pokrene
 wait_for_startup() {
     echo "⏳ Čekam $1 sekundi da se $2 pokrene..."

@@ -35,6 +35,19 @@ sleep 3
 # Ubij tmux sesiju
 tmux kill-session -t iot_system 2>/dev/null
 
+# Zaustavi MQTT broker
+echo "🔌 Zaustavljam MQTT broker..."
+if pgrep -x "mosquitto" > /dev/null; then
+    pkill mosquitto
+    if [ $? -eq 0 ]; then
+        echo "✅ MQTT broker je uspešno zaustavljen"
+    else
+        echo "⚠️  Možda je potrebno ručno zaustaviti MQTT broker"
+    fi
+else
+    echo "ℹ️  MQTT broker nije bio pokrenut"
+fi
+
 echo "✅ IoT sistem je uspešno zaustavljen!"
 echo ""
 echo "💡 Da pokrenete sistem ponovo:"
