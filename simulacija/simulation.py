@@ -32,7 +32,7 @@ class SimulationApp:
         self.setup_window()
         
         # Kreiranje SimData foldera ako ne postoji
-        self.sim_data_path = "/home/radov1c/Desktop/FTN/Letnji/IoT/IoT-projekat/simulacija/SimData"
+        self.sim_data_path = "../SimData"
         os.makedirs(self.sim_data_path, exist_ok=True)
         
         # Inicijalizacija komponenti

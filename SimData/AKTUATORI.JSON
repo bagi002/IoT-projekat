@@ -1,10 +1,10 @@
 {
   "pump": {
-    "status": 0,
-    "runtime_minutes": 0
+    "status": 1,
+    "runtime_minutes": 600
   },
   "heater": {
-    "status": 0,
-    "temperature": 25.0
+    "status": 1,
+    "temperature": 10
   }
 }

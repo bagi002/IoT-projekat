@@ -56,7 +56,7 @@ int main() {
     
     while (true) {
         // 5. Čitanje JSON podataka iz datoteke
-        std::string jsonData = readJsonFromFile("/home/radov1c/Desktop/FTN/Letnji/IoT/IoT-projekat/simulacija/SimData/VAZDUH.JSON");
+        std::string jsonData = readJsonFromFile("../../SimData/VAZDUH.JSON");
         
         if (!jsonData.empty()) {
             // Parsiraj JSON podatke
